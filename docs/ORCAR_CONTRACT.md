@@ -4,7 +4,7 @@
 
 It lists the rules specific to the Orcar that general Pixelblaze knowledge won't tell you. This contract sets the **rules**; the template sets the **data** (feature counts, wiring, landmarks); `docs/PIXELBLAZE_REFERENCE.md` covers **syntax**; `src/examples/` has working code. Paths in this file are relative to the repository root.
 
-Status: draft v0.4, 2026-10-19 (simulator added). Firmware: Pixelblaze 3, v3.51. Feature counts and wiring change as strands get installed; the template (`src/template/orcar_3d_mapped.js`) is the source of truth for those, so this file never repeats numbers you'd have to keep in sync, except in the snapshot tables marked as such.
+Status: draft v0.5, 2026-10-19 (public control page, §12). Firmware: Pixelblaze 3, v3.51. Feature counts and wiring change as strands get installed; the template (`src/template/orcar_3d_mapped.js`) is the source of truth for those, so this file never repeats numbers you'd have to keep in sync, except in the snapshot tables marked as such.
 
 ---
 
@@ -292,12 +292,30 @@ The Orcar drives through crowds at night, including parades with children.
 - [ ] No large-area flashing above 3 Hz (unless behind a default-off, clearly named toggle).
 - [ ] Looks right at 20% brightness.
 - [ ] On the truck: no seams, board B at or above the FPS minimum, controls tested at their extremes.
+- [ ] For the public control page: §12 (controls not variables, `_Admin` for crew-only, safe at every extreme).
 
 ---
 
 ## 11. Not yet verified (author with care)
 
-- **Trigger buttons** (`trigger…()`): it isn't known whether a press on the leader reaches the followers the way slider values do. Until it's tested, don't make an effect depend on one; prefer automatic or time-based events.
+- **Trigger buttons** (`trigger…()`): it isn't known whether a press on the leader reaches the followers the way slider values do. Until it's tested, don't make an effect depend on one; prefer automatic or time-based events. (A trigger sent with `setControls`, as the public control page does, ran the handler on a single spare board; the sync group is the untested part. `src/effects/orca-playground.effect.js` doubles as the test.)
 - **Sound thresholds** in examples 07 and 08 were tuned on synthetic audio. Re-tune them on the real sensor board.
+
+---
+
+## 12. Effects for the public control page
+
+The public control page (`web/play.html`, served from board A as `/play.html`; see `docs/PUBLIC_UI.md`) shows the running pattern's UI controls as big touch controls for anyone to use. An effect meant for it:
+
+- **MUST:** make every public knob a UI control (`slider…`, `toggle…`, `hsvPicker…`, `rgbPicker…`, `inputNumber…`, `trigger…`), never an exported variable. Control values reach all six boards; exported variables reach only board A (§5).
+- **MUST:** stay within §8 with every public control at every extreme, in any combination. The public will find the extremes.
+- **MUST:** hide crew-only controls, and any strobe toggle (§8), by ending the name with `_Admin` (`toggleStrobe_FastFlash_Admin`). The page never shows those.
+- **MUST:** enforce limits in the pattern itself: clamp numbers, and give triggers their own minimum gap (the demo ignores presses within 1 s). The page's limits are a convenience, and the Pixelblaze UI doesn't apply them.
+- **SHOULD:** name controls in plain words, since the name is the label (`sliderWaveSpeed` → "Wave Speed"), and order them by how much fun they are: the page shows them in source order.
+- **SHOULD:** give each `inputNumber…` a range hint on its line, `// range 1..8`.
+- **SHOULD:** mirror each `showNumber…`/`gauge…` readout in an exported variable named after it (`showNumberSplashes` → `export var splashes`), so the page can show it live.
+- **SHOULD:** keep to about nine public controls.
+
+`npm run web:check` reads every effect the way the page does and warns about missing readout variables, missing range hints and visible strobe controls. `src/effects/orca-playground.effect.js` follows all of this and uses every control type.
 
 Project tasks and open questions live in the project's task list (`orcar-led-map-outstanding.md`), not here.

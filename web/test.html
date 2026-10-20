@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Orcar Pixelblaze Test</title>
+<style>
+  :root { --bg:#0e1420; --panel:#172031; --line:#2a3650; --text:#e6ecf5; --dim:#8b98ad; --accent:#3fb6c8; --ok:#4cc38a; --bad:#e5676b; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; padding:16px; padding-bottom:40px; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  h2 { font-size:15px; margin:0 0 10px; color:var(--dim); font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
+  section { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px; margin:12px 0; }
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  input[type=text], input[type=number] { background:#0b111b; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:10px; font-size:16px; min-width:0; }
+  button { background:#24324a; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:10px 14px; font-size:16px; cursor:pointer; }
+  button.primary { background:var(--accent); color:#06222a; border-color:var(--accent); font-weight:600; }
+  button.on { background:var(--accent); color:#06222a; }
+  input[type=range] { width:100%; height:36px; accent-color:var(--accent); }
+  .dim { color:var(--dim); font-size:14px; }
+  .status { display:inline-block; padding:2px 10px; border-radius:99px; font-size:13px; background:#333; }
+  .status.ok { background:var(--ok); color:#062; }
+  .status.bad { background:var(--bad); color:#300; }
+  #patterns { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:8px; }
+  #patterns button { text-align:left; }
+  .ctl { margin:10px 0; }
+  .ctl label { display:flex; justify-content:space-between; font-size:14px; }
+  .swatch { width:28px; height:28px; border-radius:6px; border:1px solid var(--line); display:inline-block; }
+  ul.checks { list-style:none; padding:0; margin:0; }
+  ul.checks li::before { content:"○ "; color:var(--dim); }
+  ul.checks li.done::before { content:"● "; color:var(--ok); }
+  pre { background:#0b111b; border:1px solid var(--line); border-radius:8px; padding:10px; font-size:12px; max-height:260px; overflow:auto; white-space:pre-wrap; word-break:break-all; margin:8px 0 0; }
+  .grid2 { display:grid; grid-template-columns:auto 1fr; gap:4px 12px; font-size:14px; }
+</style>
+</head>
+<body>
+<h1>Orcar Pixelblaze test <span id="status" class="status">not connected</span></h1>
+<div class="dim">Served from <span id="servedFrom"></span>. Nothing on this page saves to flash.</div>
+
+<section>
+  <h2>Checks</h2>
+  <ul class="checks">
+    <li id="ck-page" class="done">Page served and its script runs</li>
+    <li id="ck-ws">WebSocket connected (port 81)</li>
+    <li id="ck-config">Settings received</li>
+    <li id="ck-list">Pattern list received</li>
+    <li id="ck-switch">Pattern switched from this page</li>
+    <li id="ck-controls">Control values received for the active pattern</li>
+    <li id="ck-setctl">Control changed from this page (watch the LEDs)</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Connection</h2>
+  <div class="row">
+    <input id="host" type="text" placeholder="Pixelblaze IP, e.g. 192.168.4.1" style="flex:1" autocapitalize="off" autocorrect="off">
+    <button class="primary" id="connectBtn">Connect</button>
+    <button id="disconnectBtn">Disconnect</button>
+  </div>
+  <div class="grid2" style="margin-top:10px">
+    <span class="dim">Name</span><span id="cfgName">–</span>
+    <span class="dim">Firmware</span><span id="cfgVer">–</span>
+    <span class="dim">Pixels</span><span id="cfgPixels">–</span>
+    <span class="dim">FPS</span><span id="fps">–</span>
+    <span class="dim">Active pattern</span><span id="activeName">–</span>
+  </div>
+</section>
+
+<section>
+  <h2>Brightness (not saved)</h2>
+  <input id="brightness" type="range" min="0" max="1" step="0.01" value="0.5">
+  <div class="dim">Value: <span id="brightnessVal">–</span></div>
+</section>
+
+<section>
+  <h2>Patterns (tap to switch, not saved)</h2>
+  <div id="patterns" class="dim">Connect to load the list.</div>
+</section>
+
+<section>
+  <h2>Controls of the active pattern</h2>
+  <div id="controls" class="dim">No pattern yet.</div>
+</section>
+
+<section>
+  <h2>Manual commands</h2>
+  <div class="row">
+    <input id="ctlName" type="text" placeholder="control name, e.g. sliderSpeed" style="flex:1" autocapitalize="off" autocorrect="off">
+    <input id="ctlValue" type="text" placeholder="value, e.g. 0.5 or [0.1,1,1]" style="flex:1" autocapitalize="off" autocorrect="off">
+    <button id="ctlSend">setControls</button>
+  </div>
+  <div class="row" style="margin-top:8px">
+    <input id="varName" type="text" placeholder="exported var name" style="flex:1" autocapitalize="off" autocorrect="off">
+    <input id="varValue" type="text" placeholder="value" style="flex:1" autocapitalize="off" autocorrect="off">
+    <button id="varSend">setVars</button>
+  </div>
+  <div class="row" style="margin-top:8px">
+    <button id="varsWatch">Watch vars</button>
+    <button id="refreshCtl">Re-read controls</button>
+    <button id="refreshList">Re-read pattern list</button>
+  </div>
+  <pre id="vars" hidden></pre>
+</section>
+
+<section>
+  <h2>Log</h2>
+  <div class="dim">Messages sent (→) and received (←). FPS and var updates aren't logged.</div>
+  <pre id="log"></pre>
+</section>
+
+<script>
+/* Orcar Pixelblaze test page (admin) -- served from a board as /test.html.
+   Checks the connection and exercises the websocket API: patterns, controls, vars, brightness.
+   Nothing here saves to flash. See docs/PUBLIC_UI.md in the orcar repo. */
+(function () {
+  var $ = function (s) { return document.querySelector(s); };
+  var ws = null, wantConnected = false, reconnectTimer = null;
+  var programs = {}, activeId = null, listChunks = [], watchingVars = false;
+  var logLines = [];
+
+  $('#servedFrom').textContent = location.href;
+
+  function check(id) { var el = $('#ck-' + id); if (el) el.classList.add('done'); }
+  function setStatus(text, cls) { var s = $('#status'); s.textContent = text; s.className = 'status ' + (cls || ''); }
+  function log(dir, msg) {
+    logLines.push(new Date().toLocaleTimeString() + ' ' + dir + ' ' + msg);
+    if (logLines.length > 200) logLines.shift();
+    var el = $('#log'); el.textContent = logLines.join('\n'); el.scrollTop = el.scrollHeight;
+  }
+  function send(obj) {
+    if (!ws || ws.readyState !== 1) { log('!', 'not connected'); return; }
+    var s = JSON.stringify(obj);
+    ws.send(s); log('→', s);
+  }
+
+  // Throttle repeated sends (sliders) to about 16 per second, always sending the latest value.
+  var pending = {}, timers = {};
+  function throttled(key, makeMsg, value) {
+    pending[key] = value;
+    if (timers[key]) return;
+    timers[key] = setTimeout(function () { timers[key] = null; send(makeMsg(pending[key])); }, 60);
+  }
+
+  function parseValue(text) {
+    try { return JSON.parse(text); } catch (e) { return text; }
+  }
+
+  // ---- Host default: same origin when served over http, else the last one used
+  function defaultHost() {
+    if (location.protocol === 'http:' && location.hostname) return location.hostname;
+    try { return localStorage.getItem('pbHost') || ''; } catch (e) { return ''; }
+  }
+  $('#host').value = defaultHost();
+
+  function connect() {
+    var host = $('#host').value.trim();
+    if (!host) { log('!', 'enter the Pixelblaze IP first'); return; }
+    try { localStorage.setItem('pbHost', host); } catch (e) {}
+    if (location.protocol === 'https:') log('!', 'this page is on https; Safari will block ws:// connections');
+    wantConnected = true;
+    if (ws) { try { ws.close(); } catch (e) {} }
+    setStatus('connecting…');
+    ws = new WebSocket('ws://' + host + ':81');
+    ws.binaryType = 'arraybuffer';
+    ws.onopen = function () {
+      setStatus('connected', 'ok'); check('ws');
+      send({ sendUpdates: false, getConfig: true, listPrograms: true });
+    };
+    ws.onclose = function () {
+      setStatus('disconnected', 'bad');
+      if (wantConnected) { clearTimeout(reconnectTimer); reconnectTimer = setTimeout(connect, 2000); }
+    };
+    ws.onerror = function () { log('!', 'websocket error'); };
+    ws.onmessage = function (e) {
+      if (typeof e.data === 'string') onText(e.data); else onBinary(e.data);
+    };
+  }
+  function disconnect() {
+    wantConnected = false; clearTimeout(reconnectTimer);
+    if (ws) ws.close();
+  }
+
+  // ---- Binary frames: [type, flags, payload...]; preview frames (type 5) have no flags byte
+  function onBinary(buf) {
+    var b = new Uint8Array(buf), type = b[0];
+    if (type === 5) return;               // live preview frame: ignore
+    var flags = b[1];
+    if (type === 7) {                     // pattern list, possibly split over several frames
+      if (flags & 1) listChunks = [];
+      listChunks.push(b.slice(2));
+      if (flags & 4) {
+        var total = 0; listChunks.forEach(function (c) { total += c.length; });
+        var all = new Uint8Array(total), off = 0;
+        listChunks.forEach(function (c) { all.set(c, off); off += c.length; });
+        parseProgramList(new TextDecoder().decode(all));
+      }
+      return;
+    }
+    log('←', 'binary frame type ' + type + ' (' + b.length + ' bytes)');
+  }
+
+  function parseProgramList(text) {
+    programs = {};
+    text.split('\n').forEach(function (line) {
+      var parts = line.split('\t');
+      if (parts.length === 2 && parts[0]) programs[parts[0]] = parts[1];
+    });
+    log('←', 'pattern list: ' + Object.keys(programs).length + ' patterns');
+    check('list');
+    renderPatterns();
+    if (activeId) $('#activeName').textContent = programs[activeId] || activeId;
+  }
+
+  function renderPatterns() {
+    var box = $('#patterns'); box.innerHTML = ''; box.classList.remove('dim');
+    var ids = Object.keys(programs).sort(function (a, b) { return programs[a].localeCompare(programs[b]); });
+    if (!ids.length) { box.textContent = 'No patterns.'; box.classList.add('dim'); return; }
+    ids.forEach(function (id) {
+      var btn = document.createElement('button');
+      btn.textContent = programs[id];
+      if (id === activeId) btn.classList.add('on');
+      btn.onclick = function () {
+        send({ activeProgramId: id, save: false });
+        check('switch');
+      };
+      box.appendChild(btn);
+    });
+  }
+
+  // ---- Text frames (JSON)
+  function onText(t) {
+    var m;
+    try { m = JSON.parse(t); } catch (e) { log('←', t.slice(0, 300)); return; }
+    if (m.fps !== undefined) { $('#fps').textContent = Number(m.fps).toFixed(1); return; }
+    if (m.vars) { var v = $('#vars'); v.hidden = false; v.textContent = JSON.stringify(m.vars, null, 1); return; }
+    log('←', t.length > 300 ? t.slice(0, 300) + '…' : t);
+
+    if (m.ver !== undefined || m.pixelCount !== undefined) {
+      check('config');
+      $('#cfgName').textContent = m.name || '–';
+      $('#cfgVer').textContent = m.ver || '–';
+      $('#cfgPixels').textContent = m.pixelCount !== undefined ? m.pixelCount : '–';
+      if (typeof m.brightness === 'number') { $('#brightness').value = m.brightness; $('#brightnessVal').textContent = m.brightness.toFixed(2); }
+    }
+    if (m.activeProgram) {
+      var ap = m.activeProgram;
+      if (ap.activeProgramId && ap.activeProgramId !== activeId) {
+        activeId = ap.activeProgramId;
+        $('#activeName').textContent = programs[activeId] || ap.name || activeId;
+        renderPatterns();
+        send({ getControls: activeId });
+      } else if (!ap.activeProgramId) {
+        $('#activeName').textContent = ap.name || '(none: editor or unsaved code)';
+      }
+    }
+    if (m.controls && typeof m.controls === 'object' && !Array.isArray(m.controls)) {
+      var c = m.controls[activeId];
+      if (c === undefined) { var vals = Object.keys(m.controls).map(function (k) { return m.controls[k]; }); c = vals[0]; }
+      check('controls');
+      renderControls(c || {});
+    }
+  }
+
+  // ---- Controls UI, built from the names the pattern exports
+  function renderControls(c) {
+    var box = $('#controls'); box.innerHTML = ''; box.classList.remove('dim');
+    var names = Object.keys(c);
+    if (!names.length) {
+      box.classList.add('dim');
+      box.textContent = 'No control values came back for this pattern. If it has controls, they may only appear once a value has been saved in the stock UI; you can still set them by name under Manual commands.';
+      return;
+    }
+    names.forEach(function (name) {
+      var val = c[name], div = document.createElement('div'); div.className = 'ctl';
+      if (/^slider/.test(name)) {
+        div.innerHTML = '<label><span>' + name + '</span><span class="dim"></span></label><input type="range" min="0" max="1" step="0.001">';
+        var r = div.querySelector('input'), out = div.querySelector('label .dim');
+        r.value = Number(val) || 0; out.textContent = Number(r.value).toFixed(3);
+        r.oninput = function () {
+          out.textContent = Number(r.value).toFixed(3);
+          throttled('c:' + name, function (v) { var o = {}; o[name] = v; return { setControls: o }; }, Number(r.value));
+          check('setctl');
+        };
+      } else if (/^toggle/.test(name)) {
+        var isBool = typeof val === 'boolean', state = !!val;
+        var b = document.createElement('button');
+        var paint = function () { b.textContent = name + ': ' + (state ? 'on' : 'off'); b.classList.toggle('on', state); };
+        b.onclick = function () {
+          state = !state; paint();
+          var o = {}; o[name] = isBool ? state : (state ? 1 : 0);
+          send({ setControls: o }); check('setctl');
+        };
+        paint(); div.appendChild(b);
+      } else if (/^(hsvPicker|rgbPicker)/.test(name) && Array.isArray(val)) {
+        var hsv = /^hsv/.test(name), labels = hsv ? ['H', 'S', 'V'] : ['R', 'G', 'B'];
+        var cur = val.slice(0, 3), sw = document.createElement('span'); sw.className = 'swatch';
+        var paintSw = function () {
+          sw.style.background = hsv
+            ? 'hsl(' + (cur[0] * 360) + ',' + (cur[1] * 100) + '%,' + (cur[2] * 50) + '%)'
+            : 'rgb(' + cur.map(function (x) { return Math.round(x * 255); }).join(',') + ')';
+        };
+        var head = document.createElement('label'); head.innerHTML = '<span>' + name + '</span>'; head.appendChild(sw);
+        div.appendChild(head);
+        labels.forEach(function (lab, i) {
+          var r = document.createElement('input'); r.type = 'range'; r.min = 0; r.max = 1; r.step = 0.001; r.value = cur[i];
+          r.title = lab;
+          r.oninput = function () {
+            cur[i] = Number(r.value); paintSw();
+            throttled('c:' + name, function (v) { var o = {}; o[name] = v; return { setControls: o }; }, cur.slice());
+            check('setctl');
+          };
+          div.appendChild(r);
+        });
+        paintSw();
+      } else if (/^inputNumber/.test(name)) {
+        div.innerHTML = '<label><span>' + name + '</span></label>';
+        var n = document.createElement('input'); n.type = 'number'; n.value = val; n.step = 'any';
+        n.onchange = function () { var o = {}; o[name] = Number(n.value); send({ setControls: o }); check('setctl'); };
+        div.appendChild(n);
+      } else {
+        div.innerHTML = '<span class="dim">' + name + ': ' + JSON.stringify(val) + ' (not editable on this test page)</span>';
+      }
+      box.appendChild(div);
+    });
+  }
+
+  // ---- Wiring
+  $('#connectBtn').onclick = connect;
+  $('#disconnectBtn').onclick = disconnect;
+  $('#brightness').oninput = function () {
+    var v = Number($('#brightness').value);
+    $('#brightnessVal').textContent = v.toFixed(2);
+    throttled('brightness', function (x) { return { brightness: x }; }, v);
+  };
+  $('#ctlSend').onclick = function () {
+    var name = $('#ctlName').value.trim(); if (!name) return;
+    var o = {}; o[name] = parseValue($('#ctlValue').value.trim());
+    send({ setControls: o }); check('setctl');
+  };
+  $('#varSend').onclick = function () {
+    var name = $('#varName').value.trim(); if (!name) return;
+    var o = {}; o[name] = parseValue($('#varValue').value.trim());
+    send({ setVars: o });
+  };
+  // getVars returns one snapshot per request, so watching means polling (4 per second).
+  // Polls go out without logging, to keep the log readable.
+  var varsPoll = null;
+  function pollVars() { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ getVars: true })); }
+  $('#varsWatch').onclick = function () {
+    watchingVars = !watchingVars;
+    $('#varsWatch').textContent = watchingVars ? 'Stop watching vars' : 'Watch vars';
+    $('#varsWatch').classList.toggle('on', watchingVars);
+    clearInterval(varsPoll);
+    if (watchingVars) { log('→', '{"getVars":true} every 250 ms'); pollVars(); varsPoll = setInterval(pollVars, 250); }
+    else log('!', 'stopped polling vars');
+  };
+  $('#refreshCtl').onclick = function () { if (activeId) send({ getControls: activeId }); };
+  $('#refreshList').onclick = function () { send({ listPrograms: true }); };
+
+  // Auto-connect when served from the Pixelblaze itself
+  if (location.protocol === 'http:' && location.hostname) connect();
+})();
+</script>
+</body>
+</html>

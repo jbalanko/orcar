@@ -14,7 +14,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 SKILLS = {
     "orcar-effects": ["docs/ORCAR_CONTRACT.md", "docs/PIXELBLAZE_REFERENCE.md", "src/template/*.js",
                       "src/examples/*.effect.js", "tools/*.mjs", "tools/*.py", "sim/**/*", "simulator.html",
-                      "docs/SIMULATOR.md", "maps/*.json"],
+                      "docs/SIMULATOR.md", "docs/PUBLIC_UI.md", "maps/*.json"],
     "orcar-maps": ["docs/MAP_GENERATION.md", "docs/ORCAR_CONTRACT.md", "src/template/*.js", "model/*",
                    "maps/*", "src/examples/00-map-check.effect.js", "src/examples/00b-wiring-check.effect.js",
                    "tools/*.mjs", "tools/*.py", "sim/engine.js", "package.json"],

@@ -14,6 +14,7 @@ var OrcarDocs = (function () {
     { path: 'docs/ORCAR_CONTRACT.md', title: 'Effects contract' },
     { path: 'docs/PIXELBLAZE_REFERENCE.md', title: 'Pixelblaze reference' },
     { path: 'docs/SIMULATOR.md', title: 'Simulator help' },
+    { path: 'docs/PUBLIC_UI.md', title: 'Public control page' },
   ];
 
   // GitHub-style heading ids, so "#what-the-checks-mean" links work as on GitHub.

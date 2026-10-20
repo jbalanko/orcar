@@ -24,6 +24,8 @@ jobs:
         run: node tools/check-all.mjs
       - name: Simulator self-test (its board code matches the checker)
         run: node tools/sim-selftest.mjs
+      - name: Public control page and test page (web/)
+        run: node tools/web-check.mjs
       - name: Package the claude.ai skills
         run: python3 tools/package_skill.py
       - uses: actions/upload-artifact@v4

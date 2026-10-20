@@ -35,7 +35,7 @@ const files = [
   ...walk('maps').filter((f) => /^maps\/pixelblaze_.*\.json$/.test(f)),
   'src/template/orcar_3d_mapped.js',
   // the Docs tab (and the Pixelblaze names the editor suggests)
-  'docs/ORCAR_CONTRACT.md', 'docs/PIXELBLAZE_REFERENCE.md', 'docs/SIMULATOR.md',
+  'docs/ORCAR_CONTRACT.md', 'docs/PIXELBLAZE_REFERENCE.md', 'docs/SIMULATOR.md', 'docs/PUBLIC_UI.md',
   ...effects,
 ];
 

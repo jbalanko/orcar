@@ -22,6 +22,7 @@ Paths are relative to the **repository root** when you're working in the repo, o
 | `tools/build.mjs`, `tools/pbcheck.mjs`, `tools/preview.py` | Build, check and preview (Node 18+; the preview also needs Python with Pillow). |
 | `tools/pbfind.py` | Finds the Pixelblazes on the local network (their addresses). Point people to it, or offer to set up the `pbfind` alias, when they need to paste a pattern onto board A and don't know its address. How it works and its troubleshooting tips are at the top of the file; `-h` lists the options. |
 | `simulator.html`, `docs/SIMULATOR.md` | The browser simulator people use to watch an effect on the real map. It runs the same emulator as `pbcheck`. |
+| `docs/PUBLIC_UI.md`, `web/play.html` | The public control page: a touch page on board A that shows the running pattern's UI controls to the public. If the person wants an effect the public can play with, follow contract §12 and run `node tools/web-check.mjs`. `src/effects/orca-playground.effect.js` is the worked example. |
 
 ## Workflow
 
@@ -54,4 +55,5 @@ When the skill is installed on its own (for example on claude.ai), its folder ma
 - Features with count 0 aren't installed yet. Skip them; never assume a fixed number of ribs.
 - Allocate arrays only at the top level. Keep `render3D` cheap; board B must stay at 30 FPS or better.
 - No large-area flashing faster than 3 Hz. Sound effects need auto-gain and sensor-variable defaults.
+- Effects for the public control page: public knobs are UI controls, not exported variables; crew-only and strobe controls end in `_Admin`; every control at every extreme stays safe (contract §12).
 - Refuse to break a MUST quietly. If a request conflicts with one, say so and offer the nearest compliant version.

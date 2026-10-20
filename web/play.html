@@ -1,0 +1,709 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Orcar">
+<meta name="theme-color" content="#06223a">
+<title>Play with the Orcar</title>
+<style>
+  :root {
+    --sea-top:#063a5c; --sea-bottom:#020d1c; --card:rgba(255,255,255,.09); --card-line:rgba(255,255,255,.16);
+    --text:#f2f8ff; --dim:rgba(242,248,255,.68); --accent:#4fe3d1; --accent-ink:#022a2a; --warm:#ffcf5c;
+    --radius:24px;
+  }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html { margin:0; min-height:100%; background:var(--sea-bottom); }
+  body {
+    margin:0; min-height:100vh;
+    background:linear-gradient(180deg,var(--sea-top) 0%,#04263f 45%,var(--sea-bottom) 100%);
+    color:var(--text);
+    font-family:ui-rounded,"SF Pro Rounded","Nunito","Segoe UI Rounded",system-ui,-apple-system,sans-serif;
+    -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; touch-action:manipulation;
+    padding:max(20px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(28px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
+  }
+  /* floating bubbles */
+  .bubbles { position:fixed; inset:0; pointer-events:none; overflow:hidden; z-index:0; }
+  .bubbles span { position:absolute; bottom:-40px; border-radius:50%; border:2px solid rgba(255,255,255,.18); animation:rise linear infinite; }
+  @keyframes rise { to { transform:translateY(-115vh); } }
+  @media (prefers-reduced-motion: reduce) { .bubbles { display:none; } }
+
+  main { position:relative; z-index:1; max-width:1100px; margin:0 auto; }
+  header { text-align:center; margin:4px 0 22px; }
+  header h1 { font-size:clamp(30px,6vw,48px); margin:0; letter-spacing:.01em; }
+  header p { margin:6px 0 0; color:var(--dim); font-size:clamp(16px,2.6vw,20px); }
+  .whale { font-size:clamp(36px,7vw,56px); display:block; line-height:1; margin-bottom:4px; }
+
+  #grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px; }
+  .card { background:var(--card); border:1px solid var(--card-line); border-radius:var(--radius); padding:18px 20px 20px;
+          backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
+  .card.wide { grid-column:1 / -1; }
+  .label { display:flex; justify-content:space-between; align-items:baseline; font-size:21px; font-weight:700; margin-bottom:14px; }
+  .label .val { font-size:17px; color:var(--dim); font-weight:600; }
+
+  /* slider */
+  .track { position:relative; height:56px; border-radius:28px; background:rgba(255,255,255,.12); touch-action:pan-y; cursor:pointer; }
+  .track .fill { position:absolute; left:0; top:0; bottom:0; border-radius:28px; background:linear-gradient(90deg,#1f8fb8,var(--accent)); pointer-events:none; }
+  .track.muted { opacity:.4; }
+  .track .knob { position:absolute; top:50%; width:48px; height:48px; margin:-24px 0 0 -24px; border-radius:50%; background:#fff;
+                 box-shadow:0 3px 10px rgba(0,0,0,.35); pointer-events:none; transition:transform .12s; }
+  .track.active .knob { transform:scale(1.12); }
+  .track + .track { margin-top:12px; }
+  .track.hue { background:linear-gradient(90deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00); }
+  .track.hue .fill, .track.bright .fill { display:none; }
+
+  /* colour */
+  .label .swatch-big { width:40px; height:40px; border-radius:50%; border:3px solid rgba(255,255,255,.8); display:block; box-shadow:0 0 18px rgba(255,255,255,.15); }
+  .card.colour .label { align-items:center; }
+  .wheel-wrap { display:flex; justify-content:center; margin:4px 0 16px; }
+  .wheel { position:relative; width:min(280px,100%); aspect-ratio:1; border-radius:50%; touch-action:none; cursor:pointer;
+           background:radial-gradient(circle closest-side,#fff,rgba(255,255,255,0)),
+             conic-gradient(from 90deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00);
+           box-shadow:0 0 0 3px rgba(255,255,255,.15),0 8px 24px rgba(0,0,0,.35); }
+  .wheel-dim { position:absolute; inset:0; border-radius:50%; background:#000; pointer-events:none; }
+  .wheel-knob { position:absolute; width:40px; height:40px; margin:-20px 0 0 -20px; border-radius:50%; border:4px solid #fff;
+                box-shadow:0 2px 10px rgba(0,0,0,.5); pointer-events:none; transition:transform .12s; }
+  .wheel.active .wheel-knob { transform:scale(1.15); }
+  .track.shade .fill { display:none; }
+  .palette { display:flex; flex-wrap:wrap; gap:10px; margin:2px 0 16px; }
+  .palette button { width:44px; height:44px; border-radius:50%; border:2px solid rgba(255,255,255,.5); padding:0; cursor:pointer; }
+  .palette button:active { transform:scale(.9); }
+  .track .tick { position:absolute; left:50%; top:-6px; bottom:-6px; width:3px; margin-left:-1.5px; border-radius:2px; background:rgba(255,255,255,.55); pointer-events:none; }
+
+  /* toggle */
+  .switch { width:100%; display:flex; align-items:center; justify-content:space-between; gap:12px; background:none; border:0; padding:0; color:inherit; font:inherit; cursor:pointer; }
+  .switch .name { font-size:21px; font-weight:700; text-align:left; }
+  .pill { width:96px; height:56px; border-radius:28px; background:rgba(255,255,255,.18); position:relative; transition:background .2s; flex:none; }
+  .pill::after { content:""; position:absolute; top:4px; left:4px; width:48px; height:48px; border-radius:50%; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,.35); transition:left .2s; }
+  .switch.on .pill { background:var(--accent); }
+  .switch.on .pill::after { left:44px; }
+  .switch .state { text-align:left; font-size:17px; color:var(--dim); font-weight:600; margin-top:2px; display:block; }
+
+  /* trigger */
+  .card.trigger { display:flex; align-items:center; justify-content:center; padding:22px; }
+  .big-button { width:min(240px,70vw); height:min(240px,70vw); max-width:100%; border-radius:50%; border:0; cursor:pointer;
+                background:radial-gradient(circle at 35% 30%,#fff7d6 0%,var(--warm) 38%,#ff8a3d 100%); color:#4a1d00;
+                font:inherit; font-size:clamp(28px,5vw,38px); font-weight:800;
+                box-shadow:0 10px 0 #b8521c,0 16px 30px rgba(0,0,0,.4); transition:transform .08s, box-shadow .08s, filter .3s; }
+  .big-button:active { transform:translateY(8px); box-shadow:0 2px 0 #b8521c,0 6px 14px rgba(0,0,0,.4); }
+  .big-button.cooling { filter:saturate(.35) brightness(.85); }
+  .card.trigger.burst { animation:burst .6s ease-out; }
+  @keyframes burst { 0% { box-shadow:0 0 0 0 rgba(255,207,92,.7); } 100% { box-shadow:0 0 0 30px rgba(255,207,92,0); } }
+
+  /* number stepper */
+  .stepper { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .stepper button { width:72px; height:72px; border-radius:50%; border:0; background:rgba(255,255,255,.16); color:var(--text);
+                    font:inherit; font-size:40px; font-weight:700; line-height:1; cursor:pointer; }
+  .stepper button:active { background:var(--accent); color:var(--accent-ink); }
+  .stepper .num { font-size:52px; font-weight:800; min-width:2ch; text-align:center; font-variant-numeric:tabular-nums; }
+
+  /* readouts */
+  .readout .big { font-size:56px; font-weight:800; text-align:center; font-variant-numeric:tabular-nums; line-height:1.1; }
+  .meter { height:28px; border-radius:14px; background:rgba(255,255,255,.12); overflow:hidden; }
+  .meter > div { height:100%; width:0; border-radius:14px; background:linear-gradient(90deg,#1f8fb8,var(--accent),#c6fff7); transition:width .5s linear; }  /* glides between the twice-a-second readings */
+
+  .empty { text-align:center; color:var(--dim); font-size:20px; padding:40px 10px; grid-column:1 / -1; }
+
+  /* connection banner */
+  #banner { position:fixed; left:50%; bottom:max(18px,env(safe-area-inset-bottom)); transform:translateX(-50%); z-index:5;
+            background:rgba(2,13,28,.92); border:1px solid var(--card-line); border-radius:20px; padding:14px 18px; font-size:17px;
+            display:none; align-items:center; gap:10px; max-width:calc(100% - 32px); flex-wrap:wrap; justify-content:center; }
+  #banner.show { display:flex; }
+  #banner input { font:inherit; font-size:16px; padding:8px 10px; border-radius:10px; border:1px solid var(--card-line); background:#0b1a2c; color:var(--text); width:170px; -webkit-user-select:text; user-select:text; }
+  #banner button { font:inherit; font-size:16px; padding:8px 14px; border-radius:10px; border:0; background:var(--accent); color:var(--accent-ink); font-weight:700; }
+  /* small, faint reload button for admins */
+  #reload { position:fixed; right:max(10px,env(safe-area-inset-right)); bottom:max(10px,env(safe-area-inset-bottom)); z-index:6;
+            width:44px; height:44px; border-radius:50%; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.04);
+            color:rgba(255,255,255,.3); font-size:22px; line-height:1; cursor:pointer; padding:0; }
+  #reload:active { color:var(--text); background:rgba(255,255,255,.15); }
+  .dot { width:10px; height:10px; border-radius:50%; background:var(--warm); animation:pulse 1.2s infinite; }
+  @keyframes pulse { 50% { opacity:.3; } }
+</style>
+</head>
+<body>
+<div class="bubbles" id="bubbles" aria-hidden="true"></div>
+<main>
+  <header>
+    <span class="whale" aria-hidden="true">🐋</span>
+    <h1>Play with the Orcar</h1>
+    <p id="subtitle">Touch the controls and watch the whale change!</p>
+  </header>
+  <div id="grid"><div class="empty">Waking up the whale…</div></div>
+</main>
+<button id="reload" aria-label="Reload page" title="Reload">↻</button>
+<div id="banner" role="status">
+  <span class="dot"></span><span id="bannerText">Connecting to the Orcar…</span>
+  <span id="hostBox" hidden><input id="host" placeholder="Pixelblaze IP" autocapitalize="off" autocorrect="off"><button id="hostGo">Connect</button></span>
+</div>
+
+<script>
+/* Orcar public control page -- served from board A as /play.html.
+   Shows the running pattern's UI controls as big touch controls and drives them over the
+   Pixelblaze websocket. One self-contained file: no build step, no external files, no internet.
+   How it works, how to upload it and how to change it: docs/PUBLIC_UI.md in the orcar repo.
+   The blocks between web-check:pure markers must stay free of DOM and network calls:
+   tools/web-check.mjs runs them in Node (CI). */
+(function () {
+  'use strict';
+
+  /* web-check:pure:start */
+  // ---- Settings ---------------------------------------------------------
+  var TRIGGER_VALUE = 1;     // value sent for a trigger press (unverified: check against the stock UI)
+  var TRIGGER_COOLDOWN = 1000; // ms; matches the demo's 1 s splash gap
+  var SEND_MS = 60;          // throttle for dragging (~16 sends per second)
+  var POLL_MS = 500;         // refresh while a pattern has readouts (show numbers, gauges)
+  var SYNC_MS = 1500;        // refresh otherwise, to pick up changes saved from the stock UI
+  var TOUCH_HOLD = 4000;     // ms after someone touches a control here before outside changes can move it
+  var HIDE_SUFFIX = '_Admin';// controls whose name ends with this never appear here
+  var PREFIXES = ['hsvPicker', 'rgbPicker', 'inputNumber', 'showNumber', 'slider', 'toggle', 'trigger', 'gauge'];
+  var COLOUR_STYLE = 'compare'; // 'wheel', 'shade', or 'compare' (alternates: 1st colour control wheel, 2nd shade, ...)
+  var PALETTE = ['#ff3b30', '#ff9500', '#ffd60a', '#34c759', '#00c7be', '#0a84ff', '#5e5ce6', '#ff2d92', '#ffffff'];
+  /* web-check:pure:end */
+
+  // ---- State ------------------------------------------------------------
+  var ws = null, reconnectTimer = null, bannerTimer = null;
+  var activeId = null, defs = null, initValues = null, polled = {}, vars = {}, rendered = false, ranges = {};
+  var sourceChunks = [], fallbackTimer = null, retryTimer = null, pollTimer = null, defsFromSource = false;
+  var pending = {}, timers = {};
+  var appliers = {}, lastSeen = {}, touched = {};   // live updates from outside this page
+  var $ = function (s) { return document.querySelector(s); };
+
+  // ---- Bubbles (decoration) ---------------------------------------------
+  (function () {
+    var box = $('#bubbles');
+    for (var i = 0; i < 14; i++) {
+      var b = document.createElement('span'), size = 8 + Math.random() * 26;
+      b.style.width = b.style.height = size + 'px';
+      b.style.left = Math.random() * 100 + '%';
+      b.style.animationDuration = (12 + Math.random() * 16) + 's';
+      b.style.animationDelay = (-Math.random() * 20) + 's';
+      box.appendChild(b);
+    }
+  })();
+
+  /* web-check:pure:start */
+  // ---- Helpers -------------------------------------------------------------
+  function clamp01(v) { return Math.max(0, Math.min(1, v)); }
+  function friendly(base) {
+    return base.replace(HIDE_SUFFIX, '').replace(/_/g, ' ')
+      .replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/([A-Z])([A-Z][a-z])/g, '$1 $2').trim();
+  }
+  function lowerFirst(s) { return s.charAt(0).toLowerCase() + s.slice(1); }
+  function hsv2rgb(h, s, v) {
+    h = ((h % 1) + 1) % 1;
+    var i = Math.floor(h * 6), f = h * 6 - i, p = v * (1 - s), q = v * (1 - f * s), t = v * (1 - (1 - f) * s);
+    return [[v, t, p], [q, v, p], [p, v, t], [p, q, v], [t, p, v], [v, p, q]][i % 6];
+  }
+  function rgb2hsv(r, g, b) {
+    var max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min, h = 0;
+    if (d) {
+      if (max === r) h = ((g - b) / d) % 6; else if (max === g) h = (b - r) / d + 2; else h = (r - g) / d + 4;
+      h /= 6; if (h < 0) h += 1;
+    }
+    return [h, max ? d / max : 0, max];
+  }
+  function cssRgb(c) { return 'rgb(' + c.map(function (x) { return Math.round(clamp01(x) * 255); }).join(',') + ')'; }
+  function hex2rgb(hex) { return [1, 3, 5].map(function (i) { return parseInt(hex.substr(i, 2), 16) / 255; }); }
+
+  // ---- LZ-String decompressFromUint8Array (pattern sources arrive compressed) ----
+  function lzDecompress(compressed) {
+    var length = compressed.length, resetValue = 32768;
+    var getNextValue = function (i) { return compressed.charCodeAt(i); };
+    var dictionary = [], enlargeIn = 4, dictSize = 4, numBits = 3, entry = '', result = [], w, bits, resb, maxpower, power, c;
+    var data = { val: getNextValue(0), position: resetValue, index: 1 };
+    function readBits(n) {
+      var b = 0, mp = Math.pow(2, n), pw = 1;
+      while (pw !== mp) {
+        resb = data.val & data.position;
+        data.position >>= 1;
+        if (data.position === 0) { data.position = resetValue; data.val = getNextValue(data.index++); }
+        b |= (resb > 0 ? 1 : 0) * pw;
+        pw <<= 1;
+      }
+      return b;
+    }
+    for (var i = 0; i < 3; i += 1) dictionary[i] = i;
+    bits = readBits(2);
+    switch (bits) {
+      case 0: c = String.fromCharCode(readBits(8)); break;
+      case 1: c = String.fromCharCode(readBits(16)); break;
+      case 2: return '';
+    }
+    dictionary[3] = c; w = c; result.push(c);
+    while (true) {
+      if (data.index > length) return '';
+      c = readBits(numBits);
+      switch (c) {
+        case 0: dictionary[dictSize++] = String.fromCharCode(readBits(8)); c = dictSize - 1; enlargeIn--; break;
+        case 1: dictionary[dictSize++] = String.fromCharCode(readBits(16)); c = dictSize - 1; enlargeIn--; break;
+        case 2: return result.join('');
+      }
+      if (enlargeIn === 0) { enlargeIn = Math.pow(2, numBits); numBits++; }
+      if (dictionary[c]) entry = dictionary[c];
+      else if (c === dictSize) entry = w + w.charAt(0);
+      else return null;
+      result.push(entry);
+      dictionary[dictSize++] = w + entry.charAt(0);
+      enlargeIn--;
+      w = entry;
+      if (enlargeIn === 0) { enlargeIn = Math.pow(2, numBits); numBits++; }
+    }
+  }
+  function lzFromUint8Array(arr) {
+    var parts = [], chunk = [];
+    for (var i = 0; i + 1 < arr.length; i += 2) {
+      chunk.push(arr[i] * 256 + arr[i + 1]);
+      if (chunk.length === 4096) { parts.push(String.fromCharCode.apply(null, chunk)); chunk = []; }
+    }
+    parts.push(String.fromCharCode.apply(null, chunk));
+    return lzDecompress(parts.join(''));
+  }
+
+  // ---- Find the pattern's controls in its source, in source order ---------
+  // Optional range hint for number steppers, as a comment on the same line:
+  //   export function inputNumberWaveCount(v) { ... }  // range 1..8
+  function rangesFromSource(code) {
+    var re = /export\s+function\s+(inputNumber[A-Za-z0-9_]+)\s*\([^\n]*\/\/\s*range\s+(-?[\d.]+)\s*\.\.\s*(-?[\d.]+)/g, out = {}, m;
+    while ((m = re.exec(code))) out[m[1]] = [parseFloat(m[2]), parseFloat(m[3])];
+    return out;
+  }
+  function controlsFromSource(code) {
+    code = code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    var re = /export\s+function\s+(hsvPicker|rgbPicker|inputNumber|showNumber|slider|toggle|trigger|gauge)([A-Za-z0-9_]+)\s*\(/g;
+    var out = [], seen = {}, m;
+    while ((m = re.exec(code))) {
+      var name = m[1] + m[2];
+      if (!seen[name]) { seen[name] = 1; out.push({ type: m[1], base: m[2], name: name }); }
+    }
+    return out;
+  }
+  function controlsFromValues(values) {
+    return Object.keys(values).map(function (name) {
+      for (var i = 0; i < PREFIXES.length; i++) {
+        if (name.indexOf(PREFIXES[i]) === 0) return { type: PREFIXES[i], base: name.slice(PREFIXES[i].length), name: name };
+      }
+      return null;
+    }).filter(Boolean);
+  }
+
+  /* web-check:pure:end */
+
+  // ---- Websocket ----------------------------------------------------------
+  function send(obj) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj)); }
+  function touch(name) { touched[name] = Date.now(); }
+  function throttled(key, value) {
+    touch(key);
+    pending[key] = value;
+    if (timers[key]) return;
+    timers[key] = setTimeout(function () {
+      timers[key] = null;
+      var o = {}; o[key] = pending[key];
+      send({ setControls: o });
+    }, SEND_MS);
+  }
+
+  function hostName() {
+    var q = new URLSearchParams(location.search).get('host');
+    if (q) return q;
+    if (location.protocol === 'http:' && location.hostname) return location.hostname;
+    try { return localStorage.getItem('orcarHost') || ''; } catch (e) { return ''; }
+  }
+
+  function showBanner(text, askHost) {
+    $('#bannerText').textContent = text;
+    $('#hostBox').hidden = !askHost;
+    $('#banner').classList.add('show');
+  }
+  function hideBanner() { clearTimeout(bannerTimer); $('#banner').classList.remove('show'); }
+
+  function connect() {
+    var host = hostName();
+    if (!host) { showBanner('Which Orcar should I connect to?', true); return; }
+    clearTimeout(reconnectTimer);
+    try { if (ws) ws.close(); } catch (e) {}
+    ws = new WebSocket('ws://' + host + ':81');
+    ws.binaryType = 'arraybuffer';
+    clearTimeout(bannerTimer);
+    bannerTimer = setTimeout(function () { showBanner('Connecting to the Orcar…', false); }, 1500);
+    ws.onopen = function () {
+      hideBanner();
+      activeId = null;
+      send({ sendUpdates: false, getConfig: true });
+    };
+    ws.onclose = function () {
+      showBanner('Reconnecting to the Orcar…', false);
+      reconnectTimer = setTimeout(connect, 2000);
+    };
+    ws.onmessage = function (e) { if (typeof e.data === 'string') onText(e.data); else onBinary(e.data); };
+  }
+
+  function onBinary(buf) {
+    var b = new Uint8Array(buf);
+    if (b[0] !== 6) return;               // only pattern sources (type 6) matter here
+    if (b[1] & 1) sourceChunks = [];
+    sourceChunks.push(b.slice(2));
+    if (!(b[1] & 4)) return;
+    var total = 0; sourceChunks.forEach(function (c) { total += c.length; });
+    var all = new Uint8Array(total), off = 0;
+    sourceChunks.forEach(function (c) { all.set(c, off); off += c.length; });
+    var text = null, code = '';
+    try { text = lzFromUint8Array(all); } catch (e) { text = null; }
+    if (text) {
+      try { var obj = JSON.parse(text); code = obj.main || Object.keys(obj).map(function (k) { return obj[k]; }).join('\n'); }
+      catch (e) { code = text; }
+    }
+    if (!code || defsFromSource) return;  // unreadable (the fallback covers it), or already have it
+    ranges = rangesFromSource(code);
+    defs = controlsFromSource(code);
+    defsFromSource = true;
+    clearTimeout(retryTimer);
+    if (rendered) render();               // arrived after the fallback: replace the partial list
+    else maybeRender();
+  }
+
+  // Render once both the control list (from the source) and the current values have arrived
+  function maybeRender() {
+    if (rendered || !defs || !initValues) return;
+    rendered = true; clearTimeout(fallbackTimer); render();
+  }
+
+  function onText(t) {
+    var m;
+    try { m = JSON.parse(t); } catch (e) { return; }
+    if (m.fps !== undefined) return;
+    if (m.activeProgram) {
+      var id = m.activeProgram.activeProgramId || null;
+      if (id !== activeId) startPattern(id, m.activeProgram.name);
+    }
+    if (m.controls && typeof m.controls === 'object' && !Array.isArray(m.controls) && !m.activeProgram) {
+      var c = m.controls[activeId];
+      if (c === undefined) { var keys = Object.keys(m.controls); c = keys.length ? m.controls[keys[0]] : {}; }
+      c = c || {};
+      if (!initValues && !rendered) {
+        initValues = c;
+        maybeRender();
+      } else {
+        polled = c;
+        applyOutsideChanges(c);
+        updateReadouts();
+      }
+    }
+    if (m.vars) { vars = m.vars; updateReadouts(); }
+  }
+
+  function startPattern(id, name) {
+    activeId = id; defs = null; initValues = null; polled = {}; vars = {}; rendered = false; ranges = {};
+    defsFromSource = false; sourceChunks = [];
+    clearTimeout(fallbackTimer); clearTimeout(retryTimer); clearInterval(pollTimer);
+    if (!id) {
+      $('#grid').innerHTML = '<div class="empty">The whale is resting right now. Check back soon!</div>';
+      return;
+    }
+    $('#grid').innerHTML = '<div class="empty">Getting the controls ready…</div>';
+    send({ getControls: id });
+    send({ getSources: id });
+    // The source is large and can be slow (e.g. just after a save), so ask again
+    // at 3 s. At 8 s, show what we have: controls that have stored values. If the
+    // source turns up later, it replaces that partial list.
+    retryTimer = setTimeout(function () {
+      if (defsFromSource || activeId !== id) return;
+      if (!initValues) send({ getControls: id });
+      send({ getSources: id });
+    }, 3000);
+    fallbackTimer = setTimeout(function () {
+      if (rendered) return;
+      if (!initValues) initValues = {};
+      if (!defs) defs = controlsFromValues(initValues);
+      rendered = true; render();
+    }, 8000);
+  }
+
+  // ---- Changes made elsewhere (the stock UI) ------------------------------
+  // getControls reports the pattern's saved values. Changes made on this page are
+  // never saved, so they never show up here; a value that changes between polls
+  // was saved by someone else, and the matching control here moves to it --
+  // unless someone touched that control here in the last few seconds.
+  function applyOutsideChanges(c) {
+    var now = Date.now();
+    Object.keys(c).forEach(function (name) {
+      var v = c[name];
+      if (JSON.stringify(v) === JSON.stringify(lastSeen[name])) return;
+      lastSeen[name] = v;
+      if (appliers[name] && !(now - (touched[name] || 0) < TOUCH_HOLD)) appliers[name](v);
+    });
+  }
+
+  // ---- Rendering ----------------------------------------------------------
+  var readoutEls = [];
+
+  function render() {
+    if (!defs) return;
+    var grid = $('#grid'); grid.innerHTML = ''; readoutEls = []; appliers = {}; colourCount = 0;
+    var vals = initValues || {};
+    lastSeen = JSON.parse(JSON.stringify(vals));
+    var shown = defs.filter(function (d) { return d.base.slice(-HIDE_SUFFIX.length) !== HIDE_SUFFIX; });
+    if (!shown.length) {
+      grid.innerHTML = '<div class="empty">This light show plays all by itself. Sit back and enjoy!</div>';
+      return;
+    }
+    shown.forEach(function (d) {
+      var el = null, v = vals[d.name];
+      if (d.type === 'slider') el = buildSlider(d, v);
+      else if (d.type === 'hsvPicker' || d.type === 'rgbPicker') el = buildColour(d, v);
+      else if (d.type === 'toggle') el = buildToggle(d, v);
+      else if (d.type === 'trigger') el = buildTrigger(d);
+      else if (d.type === 'inputNumber') el = buildStepper(d, v);
+      else if (d.type === 'showNumber' || d.type === 'gauge') el = buildReadout(d);
+      if (el) grid.appendChild(el);
+    });
+    clearInterval(pollTimer);
+    var hasReadouts = readoutEls.length > 0;
+    pollTimer = setInterval(function () {
+      send({ getControls: activeId });
+      if (hasReadouts) send({ getVars: true });
+    }, hasReadouts ? POLL_MS : SYNC_MS);
+  }
+
+  function card(cls) { var c = document.createElement('div'); c.className = 'card ' + (cls || ''); return c; }
+  function labelRow(text) {
+    var l = document.createElement('div'); l.className = 'label';
+    l.innerHTML = '<span></span><span class="val"></span>'; l.firstChild.textContent = text;
+    return l;
+  }
+
+  // Touch slider: tap or drag anywhere on the track
+  function makeTrack(value, onChange, cls) {
+    var t = document.createElement('div'); t.className = 'track ' + (cls || '');
+    t.innerHTML = '<div class="fill"></div><div class="knob"></div>';
+    var fill = t.firstChild, knob = t.lastChild, dragging = false;
+    // The knob sits 4px inside the track; the fill always reaches 4px past the knob's
+    // right edge, so it hugs the knob and stays a full pill even at 0.
+    function set(v) {
+      v = clamp01(v); t._v = v;
+      knob.style.left = 'calc(28px + ' + v + ' * (100% - 56px))';
+      fill.style.width = 'calc(56px + ' + v + ' * (100% - 56px))';
+    }
+    function fromEvent(e) { var r = t.getBoundingClientRect(); return clamp01((e.clientX - r.left - 28) / (r.width - 56)); }
+    t.addEventListener('pointerdown', function (e) {
+      dragging = true; t.classList.add('active');
+      try { t.setPointerCapture(e.pointerId); } catch (err) {}
+      var v = fromEvent(e); set(v); onChange(v);
+    });
+    t.addEventListener('pointermove', function (e) { if (!dragging) return; var v = fromEvent(e); set(v); onChange(v); });
+    function end() { dragging = false; t.classList.remove('active'); }
+    t.addEventListener('pointerup', end); t.addEventListener('pointercancel', end);
+    set(value);
+    t.setValue = set;
+    return t;
+  }
+
+  function buildSlider(d, v) {
+    var c = card(), l = labelRow(friendly(d.base)), val = l.lastChild;
+    var start = typeof v === 'number' ? v : 0.5;
+    val.textContent = Math.round(start * 100) + '%';
+    c.appendChild(l);
+    var track = makeTrack(start, function (x) { val.textContent = Math.round(x * 100) + '%'; throttled(d.name, x); });
+    c.appendChild(track);
+    appliers[d.name] = function (x) {
+      if (typeof x !== 'number') return;
+      track.setValue(x); val.textContent = Math.round(clamp01(x) * 100) + '%';
+    };
+    return c;
+  }
+
+  // ---- Colour controls ------------------------------------------------------
+  // Two styles to compare (COLOUR_STYLE setting):
+  //   'wheel'  colour wheel (hue around the ring, white at the centre) + brightness slider
+  //   'shade'  hue slider + shade slider (black -> full colour -> white), snapping to the middle
+  // Both send the pattern the same [h, s, v] (or [r, g, b] for rgbPicker controls).
+  var colourCount = 0;
+  function buildColour(d, v) {
+    var style = COLOUR_STYLE === 'compare' ? (colourCount++ % 2 === 0 ? 'wheel' : 'shade') : COLOUR_STYLE;
+    var isRgb = d.type === 'rgbPicker';
+    var hsv = Array.isArray(v) && v.length >= 3 ? (isRgb ? rgb2hsv(v[0], v[1], v[2]) : v.slice(0, 3)) : [0.55, 1, 1];
+    var c = card('colour'), l = labelRow(friendly(d.base));
+    var sw = document.createElement('div'); sw.className = 'swatch-big';
+    l.lastChild.appendChild(sw);
+    c.appendChild(l);
+    function sendIt() {
+      paint();
+      throttled(d.name, isRgb ? hsv2rgb(hsv[0], hsv[1], hsv[2]) : [hsv[0], hsv[1], hsv[2]]);
+    }
+    var paint, setAll;
+    if (style === 'wheel') {
+      var wheel = document.createElement('div'); wheel.className = 'wheel';
+      wheel.innerHTML = '<div class="wheel-dim"></div><div class="wheel-knob"></div>';
+      var dim = wheel.firstChild, wknob = wheel.lastChild, dragging = false;
+      var brightTrack = makeTrack(hsv[2], function (x) { hsv[2] = x; sendIt(); }, 'bright');
+      paint = function () {
+        sw.style.background = cssRgb(hsv2rgb(hsv[0], hsv[1], hsv[2]));
+        var a = hsv[0] * 2 * Math.PI, r = hsv[1] * 50;
+        wknob.style.left = (50 + Math.cos(a) * r) + '%';
+        wknob.style.top = (50 + Math.sin(a) * r) + '%';
+        wknob.style.background = cssRgb(hsv2rgb(hsv[0], hsv[1], 1));
+        dim.style.opacity = (1 - hsv[2]) * 0.85;
+        brightTrack.style.background = 'linear-gradient(90deg,#000,' + cssRgb(hsv2rgb(hsv[0], hsv[1], 1)) + ')';
+      };
+      setAll = function () { brightTrack.setValue(hsv[2]); paint(); };
+      function fromEvent(e) {
+        var r = wheel.getBoundingClientRect(), R = r.width / 2;
+        var dx = e.clientX - r.left - R, dy = e.clientY - r.top - R;
+        var a = Math.atan2(dy, dx) / (2 * Math.PI);
+        hsv[0] = (a + 1) % 1;
+        hsv[1] = clamp01(Math.sqrt(dx * dx + dy * dy) / R);
+        if (hsv[1] > 0.94) hsv[1] = 1;   // the outer rim is the full colour
+      }
+      wheel.addEventListener('pointerdown', function (e) {
+        dragging = true; wheel.classList.add('active');
+        try { wheel.setPointerCapture(e.pointerId); } catch (err) {}
+        fromEvent(e); sendIt();
+      });
+      wheel.addEventListener('pointermove', function (e) { if (!dragging) return; fromEvent(e); sendIt(); });
+      var end = function () { dragging = false; wheel.classList.remove('active'); };
+      wheel.addEventListener('pointerup', end); wheel.addEventListener('pointercancel', end);
+      var wrap = document.createElement('div'); wrap.className = 'wheel-wrap'; wrap.appendChild(wheel);
+      c.appendChild(wrap); c.appendChild(brightTrack);
+    } else {
+      // shade: 0 = black, 0.5 = full colour, 1 = white
+      var shadeOf = function () { return hsv[2] < 0.999 ? hsv[2] / 2 : 1 - hsv[1] / 2; };
+      var hueTrack = makeTrack(hsv[0], function (x) { hsv[0] = x; sendIt(); }, 'hue');
+      var shadeTrack = makeTrack(shadeOf(), function (t) {
+        if (Math.abs(t - 0.5) < 0.06) { t = 0.5; shadeTrack.setValue(0.5); }   // snap to the full colour
+        if (t <= 0.5) { hsv[1] = 1; hsv[2] = t * 2; } else { hsv[2] = 1; hsv[1] = (1 - t) * 2; }
+        sendIt();
+      }, 'shade');
+      var tick = document.createElement('div'); tick.className = 'tick'; shadeTrack.insertBefore(tick, shadeTrack.firstChild);
+      // Preset swatches: a colour sets the hue at full colour (shade in the middle); white sets the shade to white
+      var pal = document.createElement('div'); pal.className = 'palette';
+      PALETTE.forEach(function (hex) {
+        var b = document.createElement('button'); b.style.background = hex; b.setAttribute('aria-label', 'colour ' + hex);
+        b.addEventListener('click', function () {
+          var p = rgb2hsv.apply(null, hex2rgb(hex));
+          if (p[1] > 0.05) { hsv[0] = p[0]; hsv[1] = 1; } else { hsv[1] = 0; }
+          hsv[2] = 1;
+          setAll(); sendIt();
+        });
+        pal.appendChild(b);
+      });
+      c.appendChild(pal);
+      paint = function () {
+        sw.style.background = cssRgb(hsv2rgb(hsv[0], hsv[1], hsv[2]));
+        shadeTrack.style.background = 'linear-gradient(90deg,#000,' + cssRgb(hsv2rgb(hsv[0], 1, 1)) + ',#fff)';
+      };
+      setAll = function () { hueTrack.setValue(hsv[0]); shadeTrack.setValue(shadeOf()); paint(); };
+      c.appendChild(hueTrack); c.appendChild(shadeTrack);
+    }
+    setAll();
+    appliers[d.name] = function (x) {
+      if (!Array.isArray(x) || x.length < 3) return;
+      hsv = isRgb ? rgb2hsv(x[0], x[1], x[2]) : x.slice(0, 3);
+      setAll();
+    };
+    return c;
+  }
+
+  function buildToggle(d, v) {
+    var c = card(), isBool = typeof v === 'boolean', state = !!v;
+    var b = document.createElement('button'); b.className = 'switch';
+    b.innerHTML = '<span><span class="name"></span><span class="state"></span></span><span class="pill"></span>';
+    b.querySelector('.name').textContent = friendly(d.base);
+    function paint() { b.classList.toggle('on', state); b.querySelector('.state').textContent = state ? 'On' : 'Off'; b.setAttribute('aria-pressed', state); }
+    b.addEventListener('click', function () {
+      state = !state; paint(); touch(d.name);
+      var o = {}; o[d.name] = isBool ? state : (state ? 1 : 0);
+      send({ setControls: o });
+    });
+    paint(); c.appendChild(b);
+    appliers[d.name] = function (x) { isBool = typeof x === 'boolean'; state = !!x; paint(); };
+    return c;
+  }
+
+  function buildTrigger(d) {
+    var c = card('trigger');
+    var b = document.createElement('button'); b.className = 'big-button'; b.textContent = friendly(d.base) + '!';
+    var cooling = false;
+    b.addEventListener('click', function () {
+      if (cooling) return;
+      var o = {}; o[d.name] = TRIGGER_VALUE;
+      send({ setControls: o });
+      c.classList.remove('burst'); void c.offsetWidth; c.classList.add('burst');
+      cooling = true; b.classList.add('cooling');
+      setTimeout(function () { cooling = false; b.classList.remove('cooling'); }, TRIGGER_COOLDOWN);
+    });
+    c.appendChild(b);
+    return c;
+  }
+
+  function buildStepper(d, v) {
+    var range = ranges[d.name] || [0, 99];
+    var c = card(), n = typeof v === 'number' ? v : range[0];
+    n = Math.max(range[0], Math.min(range[1], n));
+    var s = document.createElement('div'); s.className = 'stepper';
+    s.innerHTML = '<button aria-label="less">−</button><span class="num"></span><button aria-label="more">+</button>';
+    var num = s.querySelector('.num');
+    function show() {
+      num.textContent = Math.round(n * 100) / 100;
+      s.firstChild.style.opacity = n <= range[0] ? 0.35 : 1;
+      s.lastChild.style.opacity = n >= range[1] ? 0.35 : 1;
+    }
+    function step(k) {
+      var next = Math.max(range[0], Math.min(range[1], Math.round(n) + k));
+      if (next === n) return;
+      n = next; show(); touch(d.name);
+      var o = {}; o[d.name] = n; send({ setControls: o });
+    }
+    s.firstChild.addEventListener('click', function () { step(-1); });
+    s.lastChild.addEventListener('click', function () { step(1); });
+    show();
+    appliers[d.name] = function (x) {
+      if (typeof x !== 'number') return;
+      n = Math.max(range[0], Math.min(range[1], x)); show();
+    };
+    c.appendChild(labelRow(friendly(d.base))); c.appendChild(s);
+    return c;
+  }
+
+  function buildReadout(d) {
+    var c = card('readout'), l = labelRow(friendly(d.base));
+    c.appendChild(l);
+    var box;
+    if (d.type === 'gauge') { box = document.createElement('div'); box.className = 'meter'; box.innerHTML = '<div></div>'; }
+    else { box = document.createElement('div'); box.className = 'big'; box.textContent = '–'; }
+    c.appendChild(box);
+    readoutEls.push({ def: d, box: box, val: l.lastChild });
+    updateReadouts();
+    return c;
+  }
+
+  // Readout values: from the live exported var named after the control
+  // (gaugeSplashPower -> splashPower). getControls only has saved (stale)
+  // values, so it's used only for patterns that don't export a matching var.
+  function updateReadouts() {
+    readoutEls.forEach(function (r) {
+      var v = vars[lowerFirst(r.def.base)];
+      if (typeof v !== 'number') v = polled[r.def.name];
+      if (typeof v !== 'number') return;
+      if (r.def.type === 'gauge') {
+        r.box.firstChild.style.width = (clamp01(v) * 100) + '%';
+        r.val.textContent = Math.round(clamp01(v) * 100) + '%';
+      } else {
+        r.box.textContent = Math.abs(v - Math.round(v)) < 1e-6 ? String(Math.round(v)) : v.toFixed(2);
+      }
+    });
+  }
+
+  // ---- Start ----------------------------------------------------------------
+  $('#reload').addEventListener('click', function () { location.reload(); });
+  $('#hostGo').addEventListener('click', function () {
+    var h = $('#host').value.trim(); if (!h) return;
+    try { localStorage.setItem('orcarHost', h); } catch (e) {}
+    var u = new URL(location.href); u.searchParams.set('host', h); history.replaceState(null, '', u);
+    connect();
+  });
+  connect();
+})();
+</script>
+</body>
+</html>

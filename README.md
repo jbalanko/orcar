@@ -12,6 +12,7 @@ LED effects, the 3D feature map, and tooling for the **Orcar**, a community-buil
 | **Write an effect with another AI** | Give it `AGENTS.md`, `docs/ORCAR_CONTRACT.md`, `docs/PIXELBLAZE_REFERENCE.md` and the closest `src/examples/*.effect.js`. |
 | **Write one by hand** | Copy an example from `src/examples/` into `src/effects/`, edit it (the simulator shows it as you go), then `npm run build` and `npm run check`. Your paste-ready file appears in `patterns/effects/`. |
 | **Change counts or wiring, or update the maps** | See `docs/MAP_GENERATION.md`, or ask Claude (the `orcar-maps` skill). |
+| **Let the public play with the Orcar** | Upload `web/play.html` to board A and open `http://<board-A>/play.html` on an iPad: big touch controls for the running pattern, nothing else. `patterns/effects/orca-playground.js` is a demo that uses every control type. See `docs/PUBLIC_UI.md`. |
 
 After any template or map change, **re-paste your patterns**: each saved pattern carries its own copy of the wiring.
 
@@ -22,6 +23,9 @@ simulator.html            OPEN THIS to preview effects in a browser (see docs/SI
 patterns/                 READY TO PASTE onto board A (generated -- don't edit)
   examples/                 the examples, built
   effects/                  the team's effects, built
+web/                      pages served from board A's flash (upload as-is, no build; docs/PUBLIC_UI.md)
+  play.html                 the public control page (/play.html): touch controls for the running pattern
+  test.html                 admin test page (/test.html): connection, patterns, raw controls, message log
 src/                      what you edit; `npm run build` turns it into patterns/
   examples/                 annotated examples 00–08 (effect section only)
   effects/                  the team's effects (effect section only)
@@ -31,10 +35,10 @@ maps/                     per-board 3D maps to upload in each board's Mapper (ge
   mapgen.json               map generator settings (hand-edited)
   MAPGEN_REPORT.md          what the last generation produced, with warnings
 model/                    the 3D linework (DXF) the maps are generated from
-docs/                     the effect rules (start here), simulator, map generation, Pixelblaze reference
+docs/                     the effect rules (start here), simulator, public control page, map generation, Pixelblaze reference
 sim/                      the simulator's code; sim/engine.js is the emulator, shared with the checker
 tools/                    build, check, preview, map generation, skill packaging, simulator self-test,
-                          pbfind (find the boards on the network)
+                          web-check (the web/ pages), pbfind (find the boards on the network)
 .claude/skills/           Claude skills: orcar-effects, orcar-maps
 AGENTS.md, CLAUDE.md      instructions AI assistants pick up automatically
 ```
@@ -54,6 +58,7 @@ npm run maps                                        # regenerate maps/ from mode
 npm run skill                                       # build/skills/*.zip for claude.ai
 npm run sim:test                                    # simulator self-test (its boards match the checker)
 npm run sim:bundle                                  # build/sim-artifact/: the simulator + files, for hosting
+npm run web:check                                   # the web/ pages, and every effect as the public page sees it
 npm run ci                                          # everything CI runs
 ```
 
@@ -98,6 +103,26 @@ More detail is at the top of `tools/pbfind.py`.
 | 07 | Sound: rib equalizer | `frequencyData`, auto-gain, frame-rate-independent smoothing | mostly |
 | 08 | Sound: beat ripple | onset detection, event timing on the synced clock | not fully (explained) |
 
+## Effects
+
+Team effects in `src/effects/` (built to `patterns/effects/`):
+
+| Effect | What | Sync |
+|---|---|---|
+| `orca-playground` | Demo for the public control page: ocean glow, rolling waves, sparkle and a Splash ripple, with all eight control types (`docs/PUBLIC_UI.md`) | safe, except Splash: presses reaching boards B–F is untested (contract §11) |
+
+## The public control page
+
+`web/play.html` is a touch page for the public: it shows the running pattern's controls (sliders, colour pickers, switches, buttons) and nothing else, and it's served by board A itself, so there's nothing to install. Upload it with:
+
+```sh
+curl -F "data=@web/play.html;filename=/play.html" http://<board-A>/edit     # upload or update
+open "http://<board-A>/play.html"                                           # use it
+open "http://<board-A>/delete?path=/play.html"                              # remove it
+```
+
+`web/test.html` (uploaded as `/test.html`) is the crew's version: connection checks, the pattern list, raw controls and a message log. iPad setup, writing effects for the page, how it works and troubleshooting are in **`docs/PUBLIC_UI.md`**.
+
 ## Changing wiring, counts or maps
 
 The maps are generated from the DXF in `model/` plus the template; details in **`docs/MAP_GENERATION.md`**. In short:
@@ -115,6 +140,6 @@ The maps are generated from the DXF in `model/` plus the template; details in **
 
 ## Contributing
 
-See `CONTRIBUTING.md`. CI (`.github/workflows/check.yml`) checks that the maps match the model and template and that `patterns/` was rebuilt and committed, runs every pattern on all six emulated boards, runs the simulator self-test, and packages both skills.
+See `CONTRIBUTING.md`. CI (`.github/workflows/check.yml`) checks that the maps match the model and template and that `patterns/` was rebuilt and committed, runs every pattern on all six emulated boards, runs the simulator self-test, checks the `web/` pages, and packages both skills.
 
 Project management (task list, on-truck tests, open questions) lives in the Orcar Claude project (`orcar-led-map-outstanding.md`), not in this repo. References like "test 5" point there.
