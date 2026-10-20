@@ -4,7 +4,7 @@ The public control page lets anyone, kids included, play with the Orcar from a t
 
 Both are single HTML files that live on **board A** (the sync leader) and are served by the Pixelblaze itself. There's nothing else to install or run: no server, no app, no internet.
 
-Status: tested on a spare Pixelblaze 3 (firmware v3.51) on 19 Oct 2026. Not yet tried on the truck; see [Not yet verified](#not-yet-verified).
+Status: tested on a spare Pixelblaze 3 (firmware v3.51) and on the truck on 19 Oct 2026. The truck test found that repeated trigger presses reached only board A; the page now sends a new value with every press (see [Triggers and sync](#triggers-and-sync)), which still needs confirming on the truck.
 
 ## Quick start
 
@@ -142,7 +142,7 @@ The contract's §12 has the rules; this is the how-to. `src/effects/orca-playgro
   The page keeps the number inside it. Clamp in the pattern too: the Pixelblaze UI doesn't read the hint.
 - **Starting values:** the page shows each control at the pattern's **saved** value. A pattern that has never had a control changed in the Pixelblaze UI has no saved values, so the page starts sliders in the middle while the pattern runs its own defaults. After installing a pattern for the public, open it in the Pixelblaze UI and set each control once (the UI saves them).
 - **Every control at both extremes must still be safe and still look good** (contract §8): fastest speed, all sparkle, darkest colour, white. The public will find the extremes.
-- **Triggers:** the page allows one press per second, but enforce your own gap in the pattern too (the demo ignores presses within 1 s). Whether a press on board A reaches boards B–F isn't tested yet (contract §11).
+- **Triggers:** the page allows one press per second, but enforce your own gap in the pattern too (the demo ignores presses within 1 s). The handler takes no arguments and should ignore any value: the page sends a different number with every press so that sync passes each press on to boards B–F (see [Triggers and sync](#triggers-and-sync)).
 - **Keep it to about nine controls or fewer.** More gets crowded on an iPad.
 
 ### Readouts (showNumber and gauge)
@@ -189,7 +189,7 @@ At the top of the script in `play.html`:
 
 | Setting | Default | What |
 |---|---|---|
-| `TRIGGER_VALUE` | `1` | Value sent for a trigger press (`{"setControls":{"triggerX":1}}`). |
+| `TRIGGER_MAX` | `30000` | Trigger presses send a counter that wraps at this value (it must stay inside 16.16 fixed point), starting at a random value. See [Triggers and sync](#triggers-and-sync). |
 | `TRIGGER_COOLDOWN` | `1000` | ms before the trigger button works again. |
 | `SEND_MS` | `60` | Throttle for drags (~16 sends a second). |
 | `POLL_MS` | `500` | Refresh interval when the pattern has readouts. |
@@ -209,11 +209,17 @@ All on the WebSocket at `ws://<board-A>:81`, JSON unless noted. The official ref
 | `{"getControls":"<id>"}` | When the pattern changes, then every 0.5–1.5 s | `{"controls":{"<id>":{name: value, ...}}}`: the pattern's **saved** control values |
 | `{"getSources":"<id>"}` | When the pattern changes (again after 3 s if needed) | Binary frames of type 6: LZ-String-compressed JSON `{"main": "<source>"}` |
 | `{"getVars":true}` | Twice a second, only with readouts | `{"vars":{...}}`: board A's exported variables |
-| `{"setControls":{name: value}}` | When someone uses a control | Nothing needed. Not saved. |
+| `{"setControls":{name: value}}` | When someone uses a control. For a trigger, the value is a counter that changes with every press. | Nothing needed. Not saved. |
 
 The Pixelblaze also sends `{"activeProgram":...}` by itself whenever the sequencer changes the pattern, and a stats message (`{"fps":...}`) every second, which the page ignores. Binary frames are `[type, flags, data…]`; flags 1/2/4 mean first/middle/last, and the page joins them until it sees "last".
 
+### Triggers and sync
+
+A trigger has no value of its own, but sync copies a control to boards B–F only when its value changes. So each press from the page sends a **different** number: a counter that starts at a random value (so a reloaded page doesn't repeat the last one) and wraps at `TRIGGER_MAX`. The pattern's `trigger…()` handler ignores the value. Board A gets every press directly; the changing value is what makes sync pass each one on.
+
 ### Behaviours worth knowing
+
+- **Sync copies a control only when its value changes.** Board A runs a trigger's handler on every `setControls`, but boards B–F only get a control whose value differs from the last one sent. With the same value every time (`{"triggerSplash":1}`), only the first press reached all six boards; after that the splash showed on board A alone, until some other control changed. Seen on the truck, 19 Oct 2026.
 
 - **`getControls` returns saved values, not live ones.** The page never saves, so its own changes never show up there. That's what makes live updates safe: the page moves a control only when its saved value **changes** between polls (someone saved a change in the Pixelblaze UI), and never within `TOUCH_HOLD` of someone touching it here.
 - **After a reload the page shows saved values,** even if the LEDs are still running values someone set on the page earlier. The next touch on a control sends that control's position; the others stay as shown.
@@ -236,12 +242,12 @@ The Pixelblaze also sends `{"activeProgram":...}` by itself whenever the sequenc
 | Only some controls appear | The board was slow to send the pattern's source; wait a few seconds or tap ↻. If it keeps happening, open the test page and check the pattern's controls there. |
 | A control is missing | Its name ends with `_Admin` (hidden on purpose), or it isn't an `export function` with one of the eight prefixes. |
 | A number or gauge shows "–" or doesn't move | The pattern doesn't export the matching variable (see [Readouts](#readouts-shownumber-and-gauge)). |
-| Changes on the page affect only part of the whale | The page is served from a follower, not board A; or (for triggers) presses don't replicate (see below). |
+| Changes on the page affect only part of the whale | The page is served from a follower, not board A. For triggers: the page on board A is an old copy that sends the same value every press (upload the current `web/play.html`); see [Triggers and sync](#triggers-and-sync). |
 | The page shows an old version | Reload; for a home-screen icon, close it in the app switcher and reopen. |
 
 ## Not yet verified
 
-- **On the truck:** everything so far was tested on a spare board outside the sync group. Check that pattern switches and controls sent to board A reach boards B–F, and that nothing on the page causes seams.
-- **Triggers across the sync group:** on the spare board, `{"setControls":{"triggerSplash":1}}` ran the pattern's trigger (its Splash counter went up). Whether a press on board A also runs on boards B–F is the open question in contract §11. With `orca-playground`, press Splash and watch: if only board A's part of the whale ripples, triggers don't replicate.
+- **Triggers with a new value each press:** on the truck (19 Oct 2026) sliders, toggles, pickers and numbers reached all six boards every time, but a trigger sent with the same value reached boards B–F only on the first press. The page now sends a counter that changes with every press. Confirm with `orca-playground`: press Splash several times, a second or more apart; the whole whale should ripple every time.
+- **The Pixelblaze UI's own trigger buttons:** it isn't known what value they send, so they may have the same first-press-only behaviour. Press Splash in the Pixelblaze UI several times and watch boards B–F.
 - **How many devices can connect at once:** the Pixelblaze's limit on WebSocket connections isn't documented. Try the iPad, a phone and the Pixelblaze UI together.
 - **Which colour picker:** `COLOUR_STYLE = 'compare'` shows both styles (wheel and shade) so they can be tried with real users; set it to the winner afterwards.

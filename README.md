@@ -109,7 +109,7 @@ Team effects in `src/effects/` (built to `patterns/effects/`):
 
 | Effect | What | Sync |
 |---|---|---|
-| `orca-playground` | Demo for the public control page: ocean glow, rolling waves, sparkle and a Splash ripple, with all eight control types (`docs/PUBLIC_UI.md`) | safe, except Splash: presses reaching boards B–F is untested (contract §11) |
+| `orca-playground` | Demo for the public control page: ocean glow, rolling waves, sparkle and a Splash ripple, with all eight control types (`docs/PUBLIC_UI.md`) | safe; Splash reaches all boards only if each press sends a new value, as the current public page does (contract §11) |
 
 ## The public control page
 

@@ -4,7 +4,7 @@
 
 It lists the rules specific to the Orcar that general Pixelblaze knowledge won't tell you. This contract sets the **rules**; the template sets the **data** (feature counts, wiring, landmarks); `docs/PIXELBLAZE_REFERENCE.md` covers **syntax**; `src/examples/` has working code. Paths in this file are relative to the repository root.
 
-Status: draft v0.5, 2026-10-19 (public control page, §12). Firmware: Pixelblaze 3, v3.51. Feature counts and wiring change as strands get installed; the template (`src/template/orcar_3d_mapped.js`) is the source of truth for those, so this file never repeats numbers you'd have to keep in sync, except in the snapshot tables marked as such.
+Status: draft v0.6, 2026-10-19 (public control page, §12; trigger sync finding, §11). Firmware: Pixelblaze 3, v3.51. Feature counts and wiring change as strands get installed; the template (`src/template/orcar_3d_mapped.js`) is the source of truth for those, so this file never repeats numbers you'd have to keep in sync, except in the snapshot tables marked as such.
 
 ---
 
@@ -298,7 +298,7 @@ The Orcar drives through crowds at night, including parades with children.
 
 ## 11. Not yet verified (author with care)
 
-- **Trigger buttons** (`trigger…()`): it isn't known whether a press on the leader reaches the followers the way slider values do. Until it's tested, don't make an effect depend on one; prefer automatic or time-based events. (A trigger sent with `setControls`, as the public control page does, ran the handler on a single spare board; the sync group is the untested part. `src/effects/orca-playground.effect.js` doubles as the test.)
+- **Trigger buttons** (`trigger…()`): sync copies a control to the followers only when its **value changes**. On the truck (19 Oct 2026), a trigger sent from the public control page with the same value every time reached boards B–F on the first press only; after that it fired on board A alone. The page now sends a new value with each press (`docs/PUBLIC_UI.md`, "Triggers and sync"), which still needs confirming on the truck, and it isn't known what the Pixelblaze UI's own trigger buttons send. So a trigger handler must ignore its value, and until both are confirmed, an effect shouldn't depend on a trigger reaching every board: prefer automatic or time-based events for anything essential. `src/effects/orca-playground.effect.js` is the test.
 - **Sound thresholds** in examples 07 and 08 were tuned on synthetic audio. Re-tune them on the real sensor board.
 
 ---

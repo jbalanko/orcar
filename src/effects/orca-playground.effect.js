@@ -24,10 +24,11 @@
 //
 // Sync: waves, colours, sparkle and wave count are safe (pure functions of
 // position, global index, time() and control values). Splash depends on
-// trigger presses on the leader reaching the followers, which is NOT yet
-// verified (contract section 11), so this pattern doubles as that test: if
-// only board A ripples, triggers don't replicate. Readouts come from
-// whichever board the page is connected to (the leader).
+// each trigger press reaching the followers. Sync copies a control only when
+// its value changes, so the public page sends a new value with every press
+// (contract section 11); this pattern is the test: every press should ripple
+// the whole whale. Readouts come from whichever board the page is connected
+// to (the leader).
 //
 // Show safety: at most one splash per second (presses inside the gap are
 // ignored), and the splash is a moving ring, not a whole-body flash. The

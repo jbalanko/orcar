@@ -150,8 +150,15 @@
 
   /* web-check:pure:start */
   // ---- Settings ---------------------------------------------------------
-  var TRIGGER_VALUE = 1;     // value sent for a trigger press (unverified: check against the stock UI)
+  // Trigger presses send a NEW value every time: sync copies a control to boards B-F only when its
+  // value changes, so repeating the same value fires the trigger on board A alone (seen on the truck,
+  // 19 Oct 2026). The pattern's trigger handler ignores the value. Range stays inside 16.16 fixed point.
+  var TRIGGER_MAX = 30000;
   var TRIGGER_COOLDOWN = 1000; // ms; matches the demo's 1 s splash gap
+  /* web-check:pure:end */
+  var triggerSeq = 1 + Math.floor(Math.random() * TRIGGER_MAX);   // random start: a reload won't repeat the last value sent
+  function nextTriggerValue() { triggerSeq = triggerSeq % TRIGGER_MAX + 1; return triggerSeq; }
+  /* web-check:pure:start */
   var SEND_MS = 60;          // throttle for dragging (~16 sends per second)
   var POLL_MS = 500;         // refresh while a pattern has readouts (show numbers, gauges)
   var SYNC_MS = 1500;        // refresh otherwise, to pick up changes saved from the stock UI
@@ -626,7 +633,7 @@
     var cooling = false;
     b.addEventListener('click', function () {
       if (cooling) return;
-      var o = {}; o[d.name] = TRIGGER_VALUE;
+      var o = {}; o[d.name] = nextTriggerValue();
       send({ setControls: o });
       c.classList.remove('burst'); void c.offsetWidth; c.classList.add('burst');
       cooling = true; b.classList.add('cooling');
