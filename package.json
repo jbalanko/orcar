@@ -1,0 +1,16 @@
+{
+  "name": "orcar",
+  "private": true,
+  "description": "LED effects, feature map and tooling for the Orcar (6 synced Pixelblaze 3 controllers)",
+  "type": "module",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "check": "node tools/check-all.mjs",
+    "maps": "python3 tools/mapgen.py",
+    "skill": "python3 tools/package_skill.py",
+    "sim:test": "node tools/sim-selftest.mjs",
+    "sim:bundle": "node tools/sim-artifact.mjs",
+    "ci": "python3 tools/mapgen.py --check && node tools/build.mjs && test -z \"$(git status --porcelain -- patterns)\" && node tools/check-all.mjs && node tools/sim-selftest.mjs"
+  }
+}

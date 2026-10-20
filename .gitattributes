@@ -1,0 +1,9 @@
+# Generated files: collapsed in GitHub diffs and excluded from language stats.
+patterns/**/*.js        linguist-generated=true
+maps/pixelblaze_*.json  linguist-generated=true
+maps/boards.json        linguist-generated=true
+maps/MAPGEN_REPORT.md   linguist-generated=true
+
+# The DXF is text, but diffs of it are meaningless; keep its bytes exactly as exported.
+*.dxf                   -text -diff
+*.png                   binary

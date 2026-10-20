@@ -1,0 +1,39 @@
+{
+  "_about": "Settings for tools/mapgen.py (DXF -> per-board Pixelblaze maps). Counts, wiring and directions come from src/template/orcar_3d_mapped.js, NOT from here. See docs/MAP_GENERATION.md.",
+
+  "dxf": "model/Orcar_Oct-Linework.dxf",
+  "name_attribute": "Skp_GroupInstanceName",
+
+  "_names": "DXF group name -> template feature name. Names not listed here are used as-is. The EVEN spines are labelled on the wrong side in the DXF (S2/S4 on port, S8/S10 on starboard), so they are swapped here. If the DXF labels are ever corrected, delete those eight swap entries -- the convention check will tell you if they're wrong.",
+  "names": {
+    "S1": "S1B", "S3": "S3B", "S5": "S5B", "S7": "S7B", "S9": "S9B", "S11": "S11B",
+    "Dorsal": "DORSAL",
+    "Left Pectoral": "LEFT_PECTORAL",
+    "Right Pectoral": "RIGHT_PECTORAL",
+    "Tail": "FLUKE",
+    "S2B": "S10B", "S10B": "S2B", "S4B": "S8B", "S8B": "S4B",
+    "S2A": "S10A", "S10A": "S2A", "S4A": "S8A", "S8A": "S4A"
+  },
+
+  "_ignore": "DXF groups that are not LED strands and play no part in the box. The unnamed group is reference geometry (it extends far below ground and past the truck).",
+  "ignore": ["", "Ghost Points"],
+
+  "_placeholder": "Strands with pixels but no geometry get one entry per pixel at this point (inches): on the centreline, mid-body between R6 and R7, ~halfway up the arches. Needed because render3D() skips pixels past the end of a map.",
+  "placeholder_features": ["EYE_1", "EYE_2", "TEST"],
+  "placeholder": [79.824, 140.0, 45.0],
+
+  "_ghost_box": "'mapped' = bounding box of the strands that currently have counts (the box grows -- and every normalized coordinate shifts -- whenever a new strand is mapped). 'all' = bounding box of ALL strand geometry in the DXF, counted or not (stable until the DXF changes). Or give [[minx,miny,minz],[maxx,maxy,maxz]] explicitly. Set to 'all' on 2026-10-18 (whole sculpture, nose tip to fluke tips).",
+  "ghost_box": "all",
+
+  "_box_extra": "DXF groups that are not LED strands but must still lie inside the ghost box (with ghost_box 'all'), so the box won't have to grow if they get LEDs later.",
+  "box_extra": ["Nose"],
+
+  "_gap_tolerance": "Inches. Breaks in a drawn path shorter than this are bridged (and reported). Larger breaks are an error.",
+  "gap_tolerance": 0.5,
+
+  "_pitch": "Expected LED spacing along a strand, inches. Used only to WARN when a count looks wrong for the strand's drawn length.",
+  "pitch_nominal": 1.37,
+  "pitch_warn_fraction": 0.2,
+
+  "decimals": 3
+}

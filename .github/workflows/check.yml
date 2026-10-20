@@ -1,0 +1,30 @@
+name: check patterns
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install ezdxf==1.4.5
+      - name: Maps match the DXF + template
+        run: python3 tools/mapgen.py --check
+      - name: Rebuild patterns/
+        run: node tools/build.mjs
+      - name: Make sure patterns/ was committed
+        run: |
+          if [ -n "$(git status --porcelain -- patterns)" ]; then
+            git status --porcelain -- patterns
+            echo "::error::patterns/ is stale -- run 'npm run build' and commit the result"; exit 1
+          fi
+      - name: Check every pattern on all six boards
+        run: node tools/check-all.mjs
+      - name: Simulator self-test (its board code matches the checker)
+        run: node tools/sim-selftest.mjs
+      - name: Package the claude.ai skills
+        run: python3 tools/package_skill.py
+      - uses: actions/upload-artifact@v4
+        with: { name: orcar-skills, path: build/skills/*.zip }

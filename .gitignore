@@ -1,0 +1,11 @@
+out/
+build/
+node_modules/
+.DS_Store
+__pycache__/
+*.pyc
+.venv/
+
+# Simulator drafts: local work in progress (src/drafts/README.md)
+src/drafts/*
+!src/drafts/README.md
