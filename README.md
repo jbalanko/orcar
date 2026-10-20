@@ -38,7 +38,7 @@ model/                    the 3D linework (DXF) the maps are generated from
 docs/                     the effect rules (start here), simulator, public control page, map generation, Pixelblaze reference
 sim/                      the simulator's code; sim/engine.js is the emulator, shared with the checker
 tools/                    build, check, preview, map generation, skill packaging, simulator self-test,
-                          web-check (the web/ pages), pbfind (find the boards on the network)
+                          web-check (the web/ pages), pbfind (find the boards on the network); see tools/README.md
 .claude/skills/           Claude skills: orcar-effects, orcar-maps
 AGENTS.md, CLAUDE.md      instructions AI assistants pick up automatically
 ```
