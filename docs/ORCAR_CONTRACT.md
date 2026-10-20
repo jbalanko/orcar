@@ -23,16 +23,16 @@ Status: draft v0.6, 2026-10-19 (public control page, §12; trigger sync finding,
 
 Six Pixelblaze 3 controllers, **boards A–F with Node IDs 0–5**, each with an output expander (8 channels, numbered 0–7 in code), drive 12 V addressable strips (WS2815, CS8812 and GS8208, all RGB) on the ribs, spines and fins of an orca sculpture on a truck, about 25 ft from nose to fluke tips. The boards run as one **sync group**: the leader's pattern code runs on every board, `time()` is synchronized, and each board renders **only its own pixels**. **Board A is the leader** and carries the sensor expansion board; its sound data is broadcast to the group. Every board has its own 3D map, and all six share one coordinate frame (§3). One pattern file therefore runs six times, once per board, with a different `nodeId()` and `pixelCount` each time.
 
-Snapshot (2026-10-18; check the template for current values):
+Snapshot (2026-10-19; check the template for current values):
 
 | Board | Node | Pixels | Global offset | Strands with counts |
 |---|---|---|---|---|
 | A | 0 | 235 | 0 | R3, R4 |
-| B | 1 | 807 | 235 | R5, R7, R8, TEST (unmapped) |
-| C | 2 | 578 | 1042 | S1B, S3B, S5B, S9B, S11B |
-| D | 3 | 589 | 1620 | DORSAL, S10B, S4B, S2B |
-| E | 4 | 377 | 2209 | R9, R10, S6C |
-| F | 5 | 430 | 2586 | LEFT/RIGHT_PECTORAL, EYE_1, EYE_2 (the kaleidoscope, unmapped) |
+| B | 1 | 978 | 235 | R5, R6, R7, R8, TEST (unmapped) |
+| C | 2 | 687 | 1213 | S1B, S3B, S7B, S5B, S9B, S11B |
+| D | 3 | 761 | 1900 | DORSAL, S10B, S8B, S4B, S2B |
+| E | 4 | 377 | 2661 | R9, R10, S6C |
+| F | 5 | 430 | 3038 | LEFT/RIGHT_PECTORAL, EYE_1, EYE_2 (the kaleidoscope, unmapped) |
 
 Board B has the most pixels, so it's the frame-rate bottleneck.
 
@@ -172,7 +172,7 @@ function kaleidoscope(index) {
 
 **Feature ≠ position.** Tags say what part a pixel belongs to, not where it is. Several "body" spines start up in the head region. To get "the part of the spines behind the head", combine the two: `(tags & TAG_SPINE) && y >= HEAD_BODY_Y`. The rule of thumb is tags for *what*, x/y/z for *where*.
 
-**Not yet counted:** R1, R2, R6, R11–R14, the A spines, S6B, S7B, S8B and the fluke are wired but still have count 0, so they match nothing yet. Effects that follow the rules above need no changes as they get counted.
+**Not yet counted:** R1, R2, R11–R14, the A spines, S6B and the fluke are wired but still have count 0, so they match nothing yet. Effects that follow the rules above need no changes as they get counted.
 
 ---
 
@@ -229,10 +229,10 @@ The sensor board is on **board A, the leader**. Followers B–F must have Settin
 
 ## 7. Performance
 
-Limits per pattern (Pixelblaze 3): **256 globals, 256 stack variables, 10,240 array elements**. The template alone uses about 120 globals and about 2,000 array elements on board B, as measured by `pbcheck`; its two tag tables are 2 × `pixelCount`. `pbcheck` prints the totals for your pattern.
+Limits per pattern (Pixelblaze 3): **256 globals, 256 stack variables, 10,240 array elements**. The template alone uses about 120 globals and about 3,300 array elements on board B, as measured by `pbcheck`; its two tag tables are 2 × `pixelCount`. `pbcheck` prints the totals for your pattern.
 
-- **SHOULD:** do per-frame work in `beforeRender` and keep `render3D` tiny. It runs ~800 times per frame on board B.
-- **SHOULD:** prefer tags and your own first-frame lookup tables over loops in `render3D`. Each extra per-pixel table costs `pixelCount` elements (807 on B), so leave room: no more than about 6 extra tables in total.
+- **SHOULD:** do per-frame work in `beforeRender` and keep `render3D` tiny. It runs ~1,000 times per frame on board B.
+- **SHOULD:** prefer tags and your own first-frame lookup tables over loops in `render3D`. Each extra per-pixel table costs `pixelCount` elements (978 on B), so leave room: no more than about 6 extra tables in total.
 - The expensive per-pixel calls are `perlin*` (fractal ones cost per octave), `sqrt`/`hypot3`, `atan2`, `pow`, `exp`/`log`, and any loop. One or two per pixel is fine; check the FPS.
 - **MUST:** keep **30 FPS or better** on **board B** (the busiest) with the pattern running. Check the FPS readout in the top bar. `pbcheck`'s "per-pixel calls" column tells you where the cost is.
 - **MUST NOT** allocate arrays outside the top level (they're never freed).

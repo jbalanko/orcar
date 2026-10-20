@@ -11,4 +11,4 @@
 - Strands with no geometry (the kaleidoscope `EYE_1`/`EYE_2` on F, TEST on B) get one placeholder entry per pixel at **(79.824, 140, 45)**: on the centreline, mid-body between R6 and R7, about halfway up the rib arches, inside the ghost box.
 - The two ghost entries come last on every board: currently `[0.977, -0.646, 0]` and `[158.672, 297.653, 135.772]`, the whole sculpture (nose tip to fluke tips). They change only if the DXF's outer shape does.
 
-It also contains geometry for strands not yet in the maps (R1, R2, R6, R11–R14, A spines, S6B, S7B, S8B, Tail/fluke). "Nose" isn't a strand, but it's used to set the front of the ghost box, ready for when their counts are known.
+It also contains geometry for strands not yet in the maps (R1, R2, R11–R14, A spines, S6B, Tail/fluke). "Nose" isn't a strand, but it's used to set the front of the ghost box, ready for when their counts are known.

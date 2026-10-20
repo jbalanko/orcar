@@ -221,11 +221,11 @@ var OrcarBoards = (function () {
   // then disagree at the board seams, as they would on the truck.
   // The rates are chosen, not measured: all different, spread from 17 to
   // 45 fps, and ordered by pixel count (fewest pixels = fastest), with board
-  // B (807 pixels) slowest. Replace them with measured FPS once the truck's
+  // B (978 pixels) slowest. Replace them with measured FPS once the truck's
   // are known. Boot offsets are arbitrary, 0 to 47 s.
-  //            A (235 px)                B (807)                    C (578)
+  //            A (235 px)                B (978)                    C (687)
   var STRESS = [{ fps: 45, bootSec: 0 }, { fps: 17, bootSec: 47.3 }, { fps: 29, bootSec: 12.9 },
-  //            D (589)                   E (377)                    F (430)
+  //            D (761)                   E (377)                    F (430)
                 { fps: 24, bootSec: 31.7 }, { fps: 40, bootSec: 5.4 }, { fps: 33, bootSec: 22.6 }];
   var MAX_STEPS = 12;            // frames per message when the page falls behind
   var WATCHDOG_MS = 2500;        // one message

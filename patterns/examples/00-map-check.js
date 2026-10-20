@@ -126,7 +126,7 @@
        to fluke tips, ~11.3 ft tall (fluke tips are the highest point).
        It only changes if the DXF does.
      Symmetry plane: X = 79.824 (dorsal fin and S6C lie exactly on it)
-     Rib planes (Y): R3 55.0  R4 79.4  R5 105.3  [R6 ~129.3]  R7 153.3
+     Rib planes (Y): R3 55.0  R4 79.4  R5 105.3  R6 129.3  R7 153.3
                      R8 177.3  R9 201.3  R10 214.5..225.3 (tilted)
        Arches stand on Z = 0; tops Z 81..94; widest is R7 (X 33.7..126.0)
      Spines, front view: intended order S1 .. S11 in an arc from starboard
@@ -142,7 +142,7 @@
        125.3, 9.5). LEFT = port, RIGHT = starboard; they mirror index for
        index (pixel k of LEFT mirrors pixel k of RIGHT).
      S6C: centerline, Y 189.3..272.5, starts where the dorsal fin ends.
-     Not yet mapped: R1, R2, R6, R11..R14, all A spines, S6B, S7B, S8B,
+     Not yet mapped: R1, R2, R11..R14, all A spines, S6B,
        fluke, blowhole (a point; location TBD).
 
    HOW TO MAINTAIN
@@ -187,7 +187,7 @@
 
    BUDGET (Pixelblaze 3, per pattern): 256 globals, 256 stack variables,
    10,240 array elements. On board B this file alone uses ~120 globals and
-   ~2,000 array elements (including 2 x pixelCount for TAGS and BB_POS), as
+   ~3,300 array elements (including 2 x pixelCount for TAGS and BB_POS), as
    measured by tools/pbcheck.mjs, which prints the totals for any pattern.
    ===================================================================== */
 
@@ -210,7 +210,7 @@ export var R2  = feature(0, 0);    // Installed; needs count + map. CW.
 export var R3  = feature(97, 0);
 export var R4  = feature(138, 0);
 export var R5  = feature(166, 0);
-export var R6  = feature(0, 0);    // Installed; needs count + map
+export var R6  = feature(171, 0);
 export var R7  = feature(171, 0);
 export var R8  = feature(170, 0);
 export var R9  = feature(163, 0);
@@ -233,8 +233,8 @@ export var S4B  = feature(172, 0);
 export var S5B  = feature(107, 0);
 export var S6B  = feature(0, 0);   // Installed; needs count + map
 export var S6C  = feature(64, 0);
-export var S7B  = feature(0, 0);   // Installed; needs count + map
-export var S8B  = feature(0, 0);   // Installed; needs count + map
+export var S7B  = feature(109, 0);
+export var S8B  = feature(172, 0);
 export var S9B  = feature(125, 0);
 export var S10B = feature(173, 0);
 export var S11B = feature(110, 0);

@@ -11,19 +11,19 @@
     {
       "id": "B",
       "node": 1,
-      "pixels": 807,
+      "pixels": 978,
       "map": "pixelblaze_B.json"
     },
     {
       "id": "C",
       "node": 2,
-      "pixels": 578,
+      "pixels": 687,
       "map": "pixelblaze_C.json"
     },
     {
       "id": "D",
       "node": 3,
-      "pixels": 589,
+      "pixels": 761,
       "map": "pixelblaze_D.json"
     },
     {
