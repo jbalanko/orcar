@@ -489,21 +489,21 @@ function buildTags() {
 //           bright white flashes that decay. The finale flickers random
 //           halves of the whole whale, then everything flashes together a
 //           few times. It goes dark for a moment, then the whole whale comes
-//           on bright white at once. A rainbow washes over it nose to tail,
-//           then each piece slides to its own colour and lingers, gently
-//           breathing, before fading to black and starting again.
+//           on bright white at once. A rainbow washes over it nose to tail
+//           and keeps washing along the body for a while, then fades to
+//           black and the show starts again.
 // Sync:     safe -- the timeline is a pure function of time(); which pieces
-//           light and their colours come from prng() seeded by slot number
-//           in beforeRender, the same draws on every board.
+//           light comes from prng() seeded by slot number in beforeRender,
+//           the same draws on every board.
 // Safety:   no piece, and no large area, flashes faster than 2.5 Hz (slots
 //           are at least 0.4 s), inside the 3 Hz limit of contract s8.
 // Try:      "Pace" scales the whole show (about 70 s .. 4.5 min);
-//           "Color Linger" sets how long the final colours hold.
+//           "Rainbow Length" sets how long the final rainbow wash lasts.
 
 var pace = 1;           // slider: 1 = default speed, larger = slower
-var lingerSecs = 24;    // slider: how long the final colours hold
+var rainbowSecs = 38;   // slider: how long the final rainbow wash lasts
 export function sliderPace(v) { pace = mix(0.5, 2, v); }
-export function sliderColorLinger(v) { lingerSecs = mix(10, 60, v); }
+export function sliderRainbowLength(v) { rainbowSecs = mix(15, 75, v); }
 
 // ---- the timeline, in seconds at pace 1 ----
 var INTRO = 3;          // dark at the start
@@ -513,20 +513,16 @@ var SLOT_SHORT = 0.45;  // last build slot (quick flash)
 var FIN_SLOT = 0.4;     // finale flicker slots (2.5 Hz, under the 3 Hz limit)
 var FIN_SLOTS = 15;     // the last FIN_ALL of them light everything
 var FIN_ALL = 3;
-var DARK = 2;           // dark pause before the big flash
+var DARK = 1.5;         // dark pause before the big flash
 var WHITE = 3;          // everything bright white
-var RAINBOW = 14;       // rainbow washing over the whole whale
-var SLIDE = 5;          // pieces slide to their own colours (start of the linger)
-var OUTRO = 4;          // fade to black
+var OUTRO = 4;          // fade to black (the end of the rainbow wash)
 
 // ---- pieces: every installed rib, spine and fin ----
 var MAXP = 40;                       // more than all features in the template
 var PIECE = array(pixelCount);       // local index -> piece number, or -1
 var PIECE_F = array(MAXP);           // piece number -> feature
 var KIND = array(MAXP);              // 0 fin, 1 rib, 2 spine
-var PIECE_HUE = array(MAXP);         // its own colour in the finale
 var PIECE_V = array(MAXP);           // brightness this frame (build-up)
-var PIECE_K = array(MAXP);           // 0..1 slide from rainbow to own colour
 var PIECE_DELAY = array(MAXP);       // when it starts within the slot, or -1
 var CAND = array(MAXP);              // scratch list for picking
 var nPieces = 0;
@@ -551,16 +547,6 @@ function buildPieces() {
   addPiece(FLUKE, 0);
   for (var r = 0; r < GROUP_ALL_RIBS.length; r++) addPiece(GROUP_ALL_RIBS[r], 1);
   for (var s = 0; s < GROUP_ALL_SPINES.length; s++) addPiece(GROUP_ALL_SPINES[s], 2);
-
-  // Colours: evenly spread hues, dealt to the pieces in a shuffled order
-  // so neighbours differ. Fixed seed: the same on every board.
-  prngSeed(4242);
-  for (var p = 0; p < nPieces; p++) CAND[p] = p;
-  for (var i = 0; i < nPieces; i++) {
-    var j = i + floor(prng(nPieces - i));
-    var tmp = CAND[i]; CAND[i] = CAND[j]; CAND[j] = tmp;
-    PIECE_HUE[CAND[i]] = i / max(1, nPieces);
-  }
 }
 
 // Clear the picks, then light n pieces of one kind (-1 = any kind). If
@@ -594,13 +580,12 @@ function envelope(u, sharp) {
 
 function slotLen(k) { return mix(SLOT_LONG, SLOT_SHORT, pow(k / (NSLOTS - 1), 0.6)); }
 
-// mode: 0 dark, 1 build-up / finale (PIECE_V), 2 white, 3 rainbow, 4 colours
+// mode: 0 dark, 1 build-up / finale (PIECE_V), 2 white, 3 rainbow
 var mode = 0;
 var white = 0;          // white level (modes 2 and 3)
 var front = 0;          // rainbow front, 0 nose .. past the tail
 var rbPhase = 0;        // rainbow scroll
-var glow = 1;           // overall level in mode 4
-var breathPh = 0;
+var glow = 1;           // fades the rainbow out at the end
 var Y_SPAN = Y_HI - Y_LO;
 
 // Kaleidoscope (EYE_1/EYE_2, unmapped) default; TEST strand off. See contract s3.3.
@@ -623,11 +608,10 @@ export function beforeRender(delta) {
   var buildLen = 0;
   for (var k = 0; k < NSLOTS; k++) buildLen += slotLen(k);
   var finLen = FIN_SLOTS * FIN_SLOT;
-  var total = INTRO + buildLen + finLen + DARK + WHITE + RAINBOW + lingerSecs + OUTRO;
+  var total = INTRO + buildLen + finLen + DARK + WHITE + rainbowSecs;
 
   var t = time(total * pace / 65.536) * total;   // seconds into the show at pace 1
   rbPhase = time(9 / 65.536);
-  breathPh = time(5 / 65.536);
 
   if (t < INTRO) { mode = 0; return; }
   t -= INTRO;
@@ -690,23 +674,12 @@ export function beforeRender(delta) {
   }
   t -= WHITE;
 
-  if (t < RAINBOW) {
-    mode = 3;
-    white = 0.85;
-    front = mix(-0.2, 1.3, smoothstep(0, 5, t));    // sweeps nose to tail in 5 s
-    return;
-  }
-  t -= RAINBOW;
-
-  // Colours: each piece slides from the rainbow to its own colour at its own
-  // moment, lingers breathing gently, then everything fades out.
-  mode = 4;
-  prngSeed(2000);
-  for (var c = 0; c < nPieces; c++) {
-    var st = prng(SLIDE * 0.6);
-    PIECE_K[c] = smoothstep(st, st + SLIDE * 0.4, t);
-  }
-  glow = 1 - smoothstep(lingerSecs, lingerSecs + OUTRO, t);
+  // Rainbow: sweeps in nose to tail over 5 s, keeps washing along the body,
+  // then fades out over the last OUTRO seconds.
+  mode = 3;
+  white = 0.85;
+  front = mix(-0.2, 1.3, smoothstep(0, 5, t));
+  glow = 1 - smoothstep(rainbowSecs - OUTRO, rainbowSecs, t);
 }
 
 export function render3D(index, x, y, z) {
@@ -722,17 +695,8 @@ export function render3D(index, x, y, z) {
   if (mode == 1) { hsv(0, 0, PIECE_V[p]); return; }
   if (mode == 2) { hsv(0, 0, white); return; }
 
+  // mode 3: rainbow along the body, white ahead of the front
   var yN = (y - Y_LO) / Y_SPAN;
-  var hRain = yN * 0.9 - rbPhase;                   // rainbow along the body
-  if (mode == 3) {
-    var col = 1 - smoothstep(front - 0.2, front, yN);   // 1 behind the front
-    hsv(hRain, col, mix(white, 0.8, col));
-    return;
-  }
-
-  // mode 4: slide the hue the short way round to this piece's colour
-  var k = PIECE_K[p];
-  var dh = mod(PIECE_HUE[p] - hRain + 0.5, 1) - 0.5;
-  var breathe = 0.85 + 0.15 * wave(breathPh + PIECE_HUE[p]);
-  hsv(hRain + dh * k, 1, mix(0.8, breathe, k) * glow);
+  var col = 1 - smoothstep(front - 0.2, front, yN);   // 1 behind the front
+  hsv(yN * 0.9 - rbPhase, col, mix(white, 0.8, col) * glow);
 }
