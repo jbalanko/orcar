@@ -23,7 +23,7 @@ const head = engine.templateHead(fs.readFileSync(TEMPLATE, 'utf8'));
 if (head === null) { console.error('template PATTERN marker not found -- did the template change?'); process.exit(1); }
 
 function build(srcFile, outFile) {
-  const rel = path.relative(ROOT, srcFile);
+  const rel = path.relative(ROOT, srcFile).split(path.sep).join('/');   // '/' on Windows too, so builds match
   const from = rel.startsWith('..') ? path.basename(srcFile) : rel;
   fs.mkdirSync(path.dirname(outFile), { recursive: true });
   fs.writeFileSync(outFile, engine.buildPattern(head, fs.readFileSync(srcFile, 'utf8'), from));

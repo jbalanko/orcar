@@ -1,3 +1,7 @@
+# LF line endings everywhere, even on Windows clones with core.autocrlf=true:
+# the simulator finds the template's PATTERN marker by matching "\n" only.
+*                       text=auto eol=lf
+
 # Generated files: collapsed in GitHub diffs and excluded from language stats.
 patterns/**/*.js        linguist-generated=true
 maps/pixelblaze_*.json  linguist-generated=true
