@@ -20,7 +20,7 @@
 //   sliderSmoothness      Smoothness     0 = hard on/off flashes, 1 = long fade-in and soft fade-out
 //   sliderAfterglow       Afterglow      0 = short fade after each flash, 1 = long fading trail
 //   sliderSwirl           Swirl          0 = solid rings, 1 = spinning arcs
-//   sliderColour          Colour         the portal hue (default blue-violet)
+//   sliderColour          Colour         the portal hue (default blue)
 //   sliderColourSpread    Colour Spread  how far the hue shifts from the first rib to the last
 //   toggleStrobe_FastFlash_Admin         crew only: lifts the 3 flashes/s limit (default off)
 //
@@ -39,16 +39,16 @@ var MAX_HZ_SECONDS = 0.34;   // minimum seconds between flashes of one rib (<= 3
 var TRAVEL = 0.75;           // a ring reaches the last rib at 75% of the trip; the rest is a dark pause
 
 // ---- Controls (defaults give a calm look with no control touched) ------
-var speed = 0.55;
+var speed = 0.75;
 var tailToNose = 0;
-var rings = 1;
-var warp = 0.4;
-var flashLen = 0.15;
-var smoothness = 0.6;
-var afterglow = 0.35;
+var rings = 1;               // Rings slider at 0
+var warp = 0;
+var flashLen = 0.8;
+var smoothness = 0.9;
+var afterglow = 0.25;
 var swirl = 0;
-var hue = 0.66;              // blue-violet
-var spread = 0.2;            // shifts towards magenta down the tunnel
+var hue = 0.6;               // blue
+var spread = 0;              // one colour down the whole tunnel
 var strobe = 0;
 
 export function sliderSpeed(v) { speed = clamp(v, 0, 1); }
