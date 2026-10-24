@@ -485,8 +485,8 @@ function buildTags() {
 // Shows:    treating the rib/spine lattice as a dot-matrix display. Each
 //           crossing (rib R3..R10 x spine S1..S5 / S11..S7) is one "dot";
 //           a lit dot glows where it sits, and two lit neighbours light
-//           the rib or spine segment between them, so letters read as
-//           strokes. Glyphs are 5 dots tall (bit 0 = S1/S11 at the bottom,
+//           the rib or spine segment between them (unless the glyph cuts
+//           that link), so letters read as strokes. Glyphs are 5 dots tall (bit 0 = S1/S11 at the bottom,
 //           bit 4 = S5/S7 at the top).
 // Looks:    "HELLO", "ORCA", hearts, a smiley, "I <3 ORCA" scroll from the
 //           tail towards the head on the port side only, over a faint glow
@@ -500,8 +500,8 @@ function buildTags() {
 // Parts:    ribs R3..R10 and the B spines are the display. Dorsal, pectorals,
 //           S6C and anything else glow with the dim grid colour.
 //           Kaleidoscope (EYE_1/EYE_2) default; TEST off.
-// Safety:   speed is capped at 4 ribs per second and every step crossfades,
-//           so no area flips faster than 3 Hz.
+// Safety:   speed is capped at 4 ribs per second, and a dot needs two steps to
+//           turn off and on again, so nothing flashes more than 2 times a second.
 // Note:     the grid geometry below (rib planes and where each spine crosses
 //           each rib, in map inches) is measured from the current maps. Ribs
 //           R1, R2 and R11+ aren't part of the display yet; if a rib or spine
@@ -531,30 +531,37 @@ var SPINE_Z = array(NCOL * NROW);
 for (var i = 0; i < NCOL; i++) RIB_Y[i] = nY(RIB_Y_IN[i]);
 for (var i = 0; i < NCOL * NROW; i++) SPINE_Z[i] = nZ(SPINE_Z_IN[i]);
 
-// --- the font tape: one 5-bit column per entry (bit 4 = top row) ---
+// --- the font tape: one column per entry ---
+// Bits 0..4: the column's dots (bit 4 = top row). Two lit dots next to each
+// other are joined, unless the column cuts that link:
+//   bit 5 + r:  no link from row r up to row r + 1 in this column
+//   bit 10 + r: no link at row r from this column to the next one
 // Messages, each followed by 3 blank columns:
 //   0 HELLO   1 ORCA   2 three hearts   3 HI + smiley   4 I <3 ORCA
 // Font (top row first):  H X.X X.X XXX X.X X.X   E XXX X.. XXX X.. XXX
-//   L X.. X.. X.. X.. XXX   O XXX X.X X.X X.X XXX   R XXX X.X XXX XX. X.X
+//   L X.. X.. X.. X.. XXX   O XXX X.X X.X X.X XXX
+//   R XXX X.X XXX XXX X.X  with two cuts, so the leg steps down from the
+//     middle of the bar, right, then down (the grid can't draw a diagonal):
+//     column 0 cuts row 1 to the right (2048), column 2 cuts rows 1-2 (64)
 //   C XXX X.. X.. X.. XXX   A XXX X.X XXX X.X X.X   I XXX .X. .X. .X. XXX
 //   heart .X.X. XXXXX XXXXX .XXX. ..X..   smiley .X.X. .X.X. ..... X...X XXXXX
 var TAPE = [31,4,31,0,31,21,21,0,31,1,1,0,31,1,1,0,31,17,31,0,0,0,0,
-  31,17,31,0,31,22,29,0,31,17,17,0,31,20,31,0,0,0,0,
+  31,17,31,0,2079,22,95,0,31,17,17,0,31,20,31,0,0,0,0,
   12,30,15,30,12,0,0,12,30,15,30,12,0,0,12,30,15,30,12,0,0,0,0,
   31,4,31,0,17,31,17,0,0,3,25,1,25,3,0,0,0,0,
-  17,31,17,0,0,12,30,15,30,12,0,0,31,17,31,0,31,22,29,0,31,17,17,0,31,20,31,0,0,0,0];
+  17,31,17,0,0,12,30,15,30,12,0,0,31,17,31,0,2079,22,95,0,31,17,17,0,31,20,31,0,0,0,0];
 var MSG_START = [0, 23, 42, 65, 83];
 var MSG_LEN = [23, 19, 23, 18, 31];
 var NMSG = 5;
 
 // --- controls ---
-var msgPick = 4;       // slider 0..1 -> which message (when not cycling)
+var msgPick = 4;       // slider 0..1 -> which message (when not cycling); default 0.85 = I <3 ORCA
 var cycle = 1;         // toggle: play every message in turn
-var speed = 2;         // slider 0..1 -> 1 .. 4 ribs per second
+var speed = 3.4;       // slider 0..1 -> 1 .. 4 ribs per second; default 0.8
 var textH = 0.5; var textS = 0.8; var textV = 1;   // picker: text colour (aqua)
 var rainbow = 0;       // toggle: letters shift through the rainbow
-var smooth = 0.4;      // slider 0..1 -> crossfade length, a hard step .. a continuous fade
-var gridGlow = 0.12;   // slider 0..1 -> brightness of the unlit grid
+var smooth = 0;        // slider 0..1 -> crossfade length, a hard step .. a continuous fade
+var gridGlow = 0;      // slider 0..1 -> brightness of the unlit grid
 var frontToBack = 0;   // toggle: scroll nose -> tail instead of tail -> nose
 
 export function sliderMessage(v) { msgPick = clamp(floor(v * NMSG), 0, NMSG - 1); }
@@ -611,21 +618,40 @@ function spineCol(y) {
   return NCOL - 1 + (y - RIB_Y[NCOL - 1]) / (RIB_Y[NCOL - 1] - RIB_Y[NCOL - 2]);
 }
 
-// --- per-frame dot brightness ---
-// DOT[side * 70 + (c + 1) * 7 + (r + 1)] = 0..1, with a blank border of one
-// column and one row all round so segment lookups never leave the array.
+// --- per-frame dot and link brightness ---
+// Indexed side * 70 + (c + 1) * 7 + (r + 1), with a blank border of one
+// column and one row all round so segment lookups never leave the arrays.
+// DOT: the dot at (c, r); LINK_UP: the rib segment from (c, r) to (c, r + 1);
+// LINK_AFT: the spine segment from (c, r) to (c + 1, r). All 0..1.
 var DOT = array(140);
+var LINK_UP = array(140);
+var LINK_AFT = array(140);
 var tapeStart = 0; var tapeLen = 1;
 var hueShift = 0;
 
-function tapeBit(p, side, c, r) {
-  var m;
-  if (side && !frontToBack) m = mod(p - (NCOL - 1 - c), tapeLen);   // port, tail -> nose
-  else {
-    m = mod(p - c, tapeLen);                     // tape column now at rib c
-    if (side) m = tapeLen - 1 - m;               // port: mirrored so letters aren't backwards
+// Tape column shown at rib c on this side at scroll step p.
+function tapeCol(p, side, c) {
+  if (side && !frontToBack) return mod(p - (NCOL - 1 - c), tapeLen);   // port, tail -> nose
+  var m = mod(p - c, tapeLen);
+  return side ? tapeLen - 1 - m : m;             // port: mirrored so letters aren't backwards
+}
+
+// Add scroll step p's dots and links, weighted w, into the arrays.
+function addStep(p, s, w) {
+  for (var c = 0; c < NCOL; c++) {
+    var m = tapeCol(p, s, c);
+    var bits = TAPE[tapeStart + m];
+    var m2 = tapeCol(p, s, c + 1);
+    var bits2 = c < NCOL - 1 ? TAPE[tapeStart + m2] : 0;
+    var first = mod(m2 - m, tapeLen) == 1 ? bits : bits2;   // whichever comes first on the tape owns the cut
+    for (var r = 0; r < NROW; r++) {
+      var k = s * 70 + (c + 1) * 7 + r + 1;
+      var dot = (bits >> r) & 1;
+      DOT[k] += w * dot;
+      if (r < NROW - 1) LINK_UP[k] += w * (dot & (bits >> (r + 1)) & 1 & !((bits >> (5 + r)) & 1));
+      LINK_AFT[k] += w * (dot & (bits2 >> r) & 1 & !((first >> (10 + r)) & 1));
+    }
   }
-  return (TAPE[tapeStart + m] >> r) & 1;
 }
 
 // Kaleidoscope (EYE_1/EYE_2, unmapped) default; TEST strand off. See contract s3.3.
@@ -655,14 +681,9 @@ export function beforeRender(delta) {
   var fade = smooth <= 0 ? (fr > 0.5) : clamp((fr - (1 - smooth)) / smooth, 0, 1);
   fade = fade * fade * (3 - 2 * fade);          // ease in and out
 
-  for (var s = 1; s < 2; s++) {                 // port only; starboard dots stay 0
-    for (var c = 0; c < NCOL; c++) {
-      for (var r = 0; r < NROW; r++) {
-        DOT[s * 70 + (c + 1) * 7 + r + 1] =
-          mix(tapeBit(step, s, c, r), tapeBit(step + 1, s, c, r), fade);
-      }
-    }
-  }
+  DOT.mutate((v) => 0); LINK_UP.mutate((v) => 0); LINK_AFT.mutate((v) => 0);
+  addStep(step, 1, 1 - fade);                    // port only; starboard stays 0
+  addStep(step + 1, 1, fade);
   hueShift = time(20 / 65.536);
 }
 
@@ -685,21 +706,22 @@ export function render3D(index, x, y, z) {
   var lit = 0;
   if (kind >= 0) {
     var side = x > MID_X ? 70 : 0;
-    var a; var b; var step;          // dot indices at each end of this segment
+    var a; var b; var step; var seg; // dot indices at each end of this segment, and its link
     if (kind < 10) {                 // rib: segment between rows
       g = clamp(g, -1, NROW - 0.001);
       step = floor(g);
       a = side + (kind + 1) * 7 + step + 1;
       b = a + 1;
+      seg = LINK_UP[a];
     } else {                         // spine: segment between columns
       g = clamp(g, -1, NCOL - 0.001);
       step = floor(g);
       a = side + (step + 1) * 7 + kind - 9;
       b = a + 7;
+      seg = LINK_AFT[a];
     }
     var f = g - step;
-    var da = DOT[a]; var db = DOT[b];
-    lit = max(min(da, db), max(da * clamp(1 - f / W, 0, 1), db * clamp(1 - (1 - f) / W, 0, 1)));
+    lit = max(seg, max(DOT[a] * clamp(1 - f / W, 0, 1), DOT[b] * clamp(1 - (1 - f) / W, 0, 1)));
   }
 
   var h = textH + rainbow * (y * 2 + hueShift);

@@ -7,19 +7,25 @@
 //           waterline. Once the whale is fully under, it holds for a moment,
 //           fades slowly to black, pauses in the dark, and starts again.
 // Sync:     safe -- the water level, ripples and fade are pure functions of
-//           time() and position; the shimmer is perlin() in world space.
+//           time() and position; the shimmer is perlin() in world space; the
+//           random angle is drawn from prng() seeded by the loop number.
 // Try:      "Cycle Length" sets the whole loop (about 30 s .. 3 min);
 //           "Ripples" sets how tall the surface waves are; "Water Angle"
 //           tilts the water nose-to-tail (middle = level, left = the nose
 //           goes under first, right = the tail goes under first).
+//           "Randomize" (on by default) picks a new random angle, anywhere
+//           in that full range, for every loop and ignores the slider.
 
 var cycleSecs = 60;   // slider: seconds for rise + hold + fade + pause
 var rippleAmt = 0.5;  // slider: surface wave height
+var manualSlope = 0;  // slider: water tilt when Randomize is off
+var randomOn = 1;     // toggle: new random tilt every loop
 
 export function sliderCycleLength(v) { cycleSecs = mix(30, 180, v); }
 export function sliderRipples(v) { rippleAmt = v; }
 // Tilt of the water plane, up to 50 degrees either way; 0.5 is level.
-export function sliderWaterAngle(v) { slope = tan((clamp(v, 0, 1) - 0.5) * 2 * MAX_TILT); }
+export function sliderWaterAngle(v) { manualSlope = tan((clamp(v, 0, 1) - 0.5) * 2 * MAX_TILT); }
+export function toggleRandomize(v) { randomOn = v; }
 
 // Fractions of the cycle (they add up to 1)
 var RISE = 0.72;      // water climbs from the bottom to over the top
@@ -27,12 +33,13 @@ var HOLD = 0.06;      // fully submerged
 var FADE = 0.14;      // slow fade to black
 // the rest (0.08) is a dark pause
 
-var FOAM_W = nLen(8);           // thickness of the pale waterline band
-var SOFT = nLen(18);            // feathered glow fading out above the surface
+var FOAM_W = nLen(5);           // thickness of the bright waterline band
+var SOFT = nLen(1.5);           // soft edge just above the surface
 var Z_SPAN = Z_HI - Z_LO;
 var Y_MID = (Y_LO + Y_HI) / 2;
 var MAX_TILT = 50 * PI / 180;   // steepest water angle (radians)
 var slope = 0;        // rise of the surface per unit of y (tail-ward); 0 = level
+var LOOPS = 256;      // random angles before the sequence repeats
 var tiltReach = 0;    // how far the tilt lifts/drops the surface at the ends
 
 var level = 0;        // water surface height (world z) this frame
@@ -62,6 +69,19 @@ export function beforeRender(delta) {
   // --- your per-frame code ---
   var t = time(cycleSecs / 65.536);               // 0..1 through the loop
   amp = nLen(mix(0.5, 8, rippleAmt));
+
+  // Water angle: the slider's, or a random one per loop. The loop number
+  // comes from a clock LOOPS times slower (minus t, rounded, so it changes
+  // exactly when t wraps, in the dark), and seeds prng() the same way on
+  // every board. The angle is uniform across the slider's whole range.
+  if (randomOn) {
+    var loopNo = floor(time(cycleSecs * LOOPS / 65.536) * LOOPS - t + 0.5);
+    prngSeed(mod(loopNo, LOOPS) + 1);
+    prng(1); prng(1); prng(1);                    // neighbouring seeds start alike: skip ahead
+    slope = tan((prng(1) - 0.5) * 2 * MAX_TILT);
+  } else {
+    slope = manualSlope;
+  }
 
   // Water level (at mid-body): from just below the base to clear over the
   // top, eased. A tilted surface needs to start lower and finish higher so
@@ -121,14 +141,9 @@ export function render3D(index, x, y, z) {
   var v = mix(0.85, 0.35, dn) * shimmer;
 
   // Blend in the foam: brighter and paler at the surface line
-  v = mix(v, 1, foam * 0.7);
-  var s = 1 - foam * 0.45;
+  v = mix(v, 1, foam);
+  var s = 1 - foam * 0.55;
 
-  // Feathered leading edge: fade out gently over SOFT above the surface,
-  // easing in at both ends so there's no visible start or stop.
-  if (d < 0) {
-    var e = smoothstep(-SOFT, 0, d);
-    v = v * e * e;
-  }
+  if (d < 0) v = v * (1 + d / SOFT);              // soft edge just above
   hsv(h, s, clamp(v, 0, 1) * fade);
 }
